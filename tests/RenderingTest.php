@@ -27,6 +27,7 @@ class RenderingTest extends TestCase
             'seo' => [
                 'meta_title' => 'Getting Started | Example',
                 'meta_description' => 'Learn the basics quickly.',
+                'meta_keywords' => ['onboarding', 'setup guide'],
             ],
             'status' => 'published',
             'content_type' => 'guide',
@@ -62,6 +63,21 @@ class RenderingTest extends TestCase
         $response->assertSee('application/ld+json', false);
         $response->assertSee('"@type":"Article"', false);
         $response->assertSee('"@type":"FAQPage"', false);
+    }
+
+    public function test_keywords_fill_host_slot_without_duplicating(): void
+    {
+        $this->makeContent();
+
+        $response = $this->get(route('contentpulse.show', 'getting-started'));
+
+        $response->assertOk();
+        $response->assertSee('content="onboarding, setup guide"', false);
+        $this->assertSame(
+            1,
+            substr_count($response->getContent(), '<meta name="keywords"'),
+            'keywords meta tag must render exactly once'
+        );
     }
 
     public function test_show_route_uses_host_layout(): void
