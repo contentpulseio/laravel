@@ -93,6 +93,26 @@ $content = Content::published()->where('slug', $slug)->firstOrFail();
 echo $content->rendered_html;
 ```
 
+## Customizing the design
+
+The bundled Blade views are fully overridable. Publish them into your app to
+own the markup and styling:
+
+```bash
+php artisan vendor:publish --tag=contentpulse-views
+```
+
+This copies the views to `resources/views/vendor/contentpulse/`:
+
+- `index.blade.php` — list page
+- `show.blade.php` — single item
+- `partials/head.blade.php` — SEO meta tags / JSON-LD
+- `partials/styles.blade.php` — base CSS
+
+Laravel automatically loads the published copies instead of the package
+defaults, so edit them freely. Delete a file to fall back to the package
+version. Package updates never overwrite your published views.
+
 ## Artisan
 
 ```bash
