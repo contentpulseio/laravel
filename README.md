@@ -57,6 +57,30 @@ Set your layout so rendered content slots into your site chrome:
 CONTENTPULSE_LAYOUT=layouts.app
 ```
 
+## Webhooks
+
+The package ships a ready-to-use webhook receiver — no controller or middleware
+to write in your app.
+
+- **Endpoint:** `POST /webhooks/contentpulse` (override with `CONTENTPULSE_WEBHOOK_PATH`).
+- **Signature:** every request is verified by the `VerifyContentPulseSignature`
+  middleware. It computes `hash_hmac('sha256', <raw request body>, CONTENTPULSE_WEBHOOK_SECRET)`
+  and compares it (constant-time) to the `X-Webhook-Signature` header.
+  - Secret not set → `503`
+  - Missing/invalid signature → `401`
+  - Valid → `200 {"status":"ok"}`
+- **Handled events** (from the `event` field or `X-Webhook-Event` header, with
+  `data.content_id` as the ContentPulse ULID):
+  - `content.created`, `content.updated`, `content.published` → fetch the item
+    from the API and upsert it into `contentpulse_contents`
+  - `content.deleted` → remove the local row
+
+Register the endpoint in your ContentPulse dashboard (Webhooks) pointing at
+`https://your-app.test/webhooks/contentpulse`, subscribe to the `content.*`
+events, and set the signing secret to match `CONTENTPULSE_WEBHOOK_SECRET`.
+Published content then syncs automatically; `contentpulse:sync` is only needed
+for the initial backfill.
+
 ## Rendering in your own views
 
 Query the local model directly:
