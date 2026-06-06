@@ -27,7 +27,7 @@ class ContentPulseServiceProvider extends PackageServiceProvider
                 $command
                     ->publishConfigFile()
                     ->publishMigrations()
-                    ->askToStarRepoOnGitHub('contentpulseio/contentpulse-laravel');
+                    ->askToStarRepoOnGitHub('contentpulseio/laravel');
             });
     }
 
