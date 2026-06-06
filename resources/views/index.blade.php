@@ -12,11 +12,18 @@
     <div class="cp-index">
         <header class="cp-index__header">
             <h1 class="cp-index__title">{{ $brandName }}</h1>
+            @if (! empty($activeCategory) || ! empty($activeTag))
+                <p class="cp-index__filter">
+                    Filtered by {{ ! empty($activeCategory) ? 'category' : 'tag' }}:
+                    <strong>{{ $activeCategory ?? $activeTag }}</strong>
+                    <a href="{{ route('contentpulse.index') }}">Clear</a>
+                </p>
+            @endif
         </header>
 
         @if ($contents->isEmpty())
             <div class="cp-index__empty">
-                <p>No articles have been published yet.</p>
+                <p>No articles found.</p>
             </div>
         @else
             <div class="cp-index__grid">

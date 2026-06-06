@@ -80,4 +80,22 @@ class Content extends Model
     {
         return $query->where('status', 'published')->orderByDesc('published_at');
     }
+
+    public function scopeWhereCategory($query, string $slug)
+    {
+        return $this->scopeWhereTaxonomy($query, 'categories', $slug);
+    }
+
+    public function scopeWhereTag($query, string $slug)
+    {
+        return $this->scopeWhereTaxonomy($query, 'tags', $slug);
+    }
+
+    protected function scopeWhereTaxonomy($query, string $column, string $slug)
+    {
+        return $query->where(function ($inner) use ($column, $slug) {
+            $inner->where($column, 'like', '%"slug":"'.$slug.'"%')
+                ->orWhereJsonContains($column, $slug);
+        });
+    }
 }
