@@ -16,6 +16,7 @@ class ContentSyncService
     public function __construct(
         private readonly ContentPulseClient $client,
         private readonly Config $config,
+        private readonly ImageDownloader $images,
     ) {}
 
     public function syncAll(?string $locale = null): int
@@ -68,7 +69,7 @@ class ContentSyncService
                 'rendered_html' => $item->renderedHtml,
                 'featured_image' => $this->rewriteImage($item->featuredImage),
                 'image_variants' => $this->rewriteImageMap($item->images),
-                'seo' => $item->seo?->toArray(),
+                'seo' => $this->seo($item),
                 'status' => $item->status,
                 'content_type' => $item->contentType,
                 'locale' => $item->locale,
@@ -90,6 +91,28 @@ class ContentSyncService
         return $value?->format('Y-m-d H:i:s');
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function seo(ContentItem $item): ?array
+    {
+        $seo = $item->seo?->toArray() ?? [];
+
+        if (empty($seo['meta_keywords'])) {
+            $keywords = $item->raw['keywords']
+                ?? ($item->raw['current_version']['meta_keywords'] ?? null);
+
+            if (is_array($keywords) && $keywords !== []) {
+                $seo['meta_keywords'] = array_values(array_filter(
+                    array_map(static fn ($k) => is_string($k) ? trim($k) : '', $keywords),
+                    static fn (string $k) => $k !== '',
+                ));
+            }
+        }
+
+        return $seo === [] ? null : $seo;
+    }
+
     private function rewriteImage(?string $url): ?string
     {
         if ($url === null || $url === '') {
@@ -99,18 +122,27 @@ class ContentSyncService
         /** @var array<string, string> $rewrites */
         $rewrites = $this->config->get('contentpulse.image_host_rewrites', []);
 
-        return strtr($url, $rewrites);
+        return $this->images->localize(strtr($url, $rewrites));
     }
 
     /**
+     * Image variants arrive as nested maps ({"og": {"url": ..., "path": ...}}).
+     * Rewrite string values directly and the `url` field of nested variants.
+     *
      * @param  array<string, mixed>  $images
      * @return array<string, mixed>
      */
     private function rewriteImageMap(array $images): array
     {
-        return array_map(
-            fn ($value) => is_string($value) ? $this->rewriteImage($value) : $value,
-            $images,
-        );
+        foreach ($images as $key => $value) {
+            if (is_string($value)) {
+                $images[$key] = $this->rewriteImage($value);
+            } elseif (is_array($value) && isset($value['url']) && is_string($value['url'])) {
+                $value['url'] = $this->rewriteImage($value['url']);
+                $images[$key] = $value;
+            }
+        }
+
+        return $images;
     }
 }
