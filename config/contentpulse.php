@@ -125,4 +125,84 @@ return [
     'image_host_rewrites' => [
         // 'http://contentpulse.test:8080' => 'http://localhost:8080',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Local Image Download
+    |--------------------------------------------------------------------------
+    |
+    | When `download` is enabled, synced featured images and variant URLs are
+    | fetched and stored on the configured filesystem disk, and the app-served
+    | public URL is persisted instead of the upstream ContentPulse URL. Run
+    | `php artisan storage:link` once when using the default `public` disk.
+    | Downloads are content-addressed (cache-busting query params ignored) so
+    | re-syncing reuses existing files. Failed downloads fall back to the
+    | upstream URL so rendering never breaks.
+    |
+    | - path: storage location relative to the disk root. Kept generic by
+    |   default so the public URL does not reveal the content source.
+    | - relative_url: when true (default), the stored public URL is rooted
+    |   (e.g. /storage/media/blog/...) so images resolve on any host/port the
+    |   app is served from, independent of APP_URL. Set false to persist the
+    |   absolute disk URL (required for off-origin disks such as S3/CDN).
+    |
+    */
+    'images' => [
+        'download' => (bool) env('CONTENTPULSE_DOWNLOAD_IMAGES', false),
+        'disk' => env('CONTENTPULSE_IMAGE_DISK', 'public'),
+        'path' => env('CONTENTPULSE_IMAGE_PATH', 'media/blog'),
+        'relative_url' => (bool) env('CONTENTPULSE_IMAGE_RELATIVE_URL', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | View Appearance
+    |--------------------------------------------------------------------------
+    |
+    | Light-touch presentation knobs for the bundled article/index views. These
+    | feed CSS custom properties in the styles partial so consuming apps can
+    | tune them without overriding the whole stylesheet.
+    |
+    | - top_offset: padding above the article. Bump this when your layout has a
+    |   fixed/sticky header so content is not hidden underneath it (e.g. '6rem').
+    | - max_width:  reading width of the article column.
+    |
+    */
+    'view' => [
+        'top_offset' => env('CONTENTPULSE_VIEW_TOP_OFFSET', '2rem'),
+        'max_width' => env('CONTENTPULSE_VIEW_MAX_WIDTH', '760px'),
+
+        /*
+         | How the package injects SEO <meta>/JSON-LD into your layout's <head>.
+         |
+         |   'sections' (default) -> fills your layout's conventional SEO @yield()s:
+         |       title, meta_description, og_title, og_description, og_type,
+         |       twitter_title, twitter_description, meta_extra (robots + image).
+         |       JSON-LD is pushed to @stack(structured_data_target). No duplicate
+         |       tags because the host renders each yield once.
+         |
+         |   'push_raw' -> @push()es a self-contained <meta>/JSON-LD block into
+         |       @stack(head_target). Use for headless/minimal layouts that have
+         |       @stack('head') and do NOT already emit og/twitter defaults.
+         */
+        'head_directive' => env('CONTENTPULSE_HEAD_DIRECTIVE', 'sections'),
+        'head_target' => env('CONTENTPULSE_HEAD_TARGET', 'head'),
+        'structured_data_target' => env('CONTENTPULSE_STRUCTURED_DATA_TARGET', 'structured-data'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Call-to-Action Button
+    |--------------------------------------------------------------------------
+    |
+    | Override the colours of CTA buttons embedded in rendered content so they
+    | match your brand. Applied via CSS custom properties in the styles partial.
+    |
+    */
+    'cta' => [
+        'background' => env('CONTENTPULSE_CTA_BG', '#7c3aed'),
+        'text_color' => env('CONTENTPULSE_CTA_TEXT', '#ffffff'),
+        'radius' => env('CONTENTPULSE_CTA_RADIUS', '6px'),
+        'shadow' => env('CONTENTPULSE_CTA_SHADOW', 'none'),
+    ],
 ];
