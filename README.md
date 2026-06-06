@@ -18,8 +18,18 @@ php artisan contentpulse:install
 php artisan migrate
 ```
 
-`contentpulse:install` publishes the config and migration. The service provider
-is auto-discovered.
+The package is published on [Packagist](https://packagist.org/packages/contentpulseio/laravel),
+so the command above works out of the box. `contentpulse:install` publishes the
+config and migration; the service provider is auto-discovered.
+
+If you install from a private fork instead of Packagist, add the repository to
+your `composer.json` before requiring:
+
+```json
+"repositories": [
+    { "type": "vcs", "url": "https://github.com/contentpulseio/laravel" }
+]
+```
 
 Set your credentials in `.env`:
 
