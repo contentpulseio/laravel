@@ -81,13 +81,68 @@ events, and set the signing secret to match `CONTENTPULSE_WEBHOOK_SECRET`.
 Published content then syncs automatically; `contentpulse:sync` is only needed
 for the initial backfill.
 
-## Rendering in your own views
+## Using your own design (decoupled read model)
 
-Query the local model directly:
+Already have a blog with your own `Post` model, controller, views, and SEO?
+Keep all of it. The package `Content` model is a plain, queryable Eloquent
+model that exposes a post-like surface, so it drops into your existing views
+with no trait, no base class, and no changes to your `Post` model.
+
+### Scopes
 
 ```php
 use ContentPulse\Laravel\Models\Content;
 
+Content::published()->get();          // status = published, newest first
+Content::whereCategory('laravel')->get();
+Content::whereTag('seo')->get();
+```
+
+### Post-like accessors (built in)
+
+| Accessor | Returns |
+|----------|---------|
+| `title`, `excerpt`, `slug`, `featured_image` | columns |
+| `content` | pre-rendered HTML (`rendered_html`) |
+| `read_time` | minutes (from `word_count`) |
+| `categories`, `tags` | `Collection` of `{name, slug}` objects |
+| `meta_title`, `meta_description`, `meta_keywords` | SEO fields |
+| `views`, `user` | `0` / `null` (override in your view if needed) |
+| `published_at` | `Carbon` |
+
+### Merge with your existing posts
+
+Because the field surface matches a typical `Post`, you can render both
+sources through the same Blade views:
+
+```php
+use App\Models\Post;
+use ContentPulse\Laravel\Models\Content;
+
+public function index()
+{
+    $feed = Post::published()->get()
+        ->concat(Content::published()->get())
+        ->sortByDesc('published_at')
+        ->values();
+
+    return view('blog.index', ['posts' => $feed]);
+}
+
+public function show(string $slug)
+{
+    $post = Post::published()->where('slug', $slug)->first()
+        ?? Content::published()->where('slug', $slug)->firstOrFail();
+
+    return view('blog.show', ['post' => $post]);
+}
+```
+
+Your views, your routes, your SEO tags — the package only supplies the data.
+
+### Or just echo the HTML
+
+```php
 $content = Content::published()->where('slug', $slug)->firstOrFail();
 
 echo $content->rendered_html;
