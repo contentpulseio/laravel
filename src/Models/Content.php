@@ -6,6 +6,8 @@ namespace ContentPulse\Laravel\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
@@ -97,5 +99,94 @@ class Content extends Model
             $inner->where($column, 'like', '%"slug":"'.$slug.'"%')
                 ->orWhereJsonContains($column, $slug);
         });
+    }
+
+    public function getContentAttribute(): string
+    {
+        return (string) ($this->rendered_html ?? '');
+    }
+
+    public function getReadTimeAttribute(): int
+    {
+        $words = (int) ($this->word_count ?? 0);
+
+        return $words > 0 ? max(1, (int) ceil($words / 200)) : 5;
+    }
+
+    public function getViewsAttribute(): int
+    {
+        return 0;
+    }
+
+    public function getUserAttribute(): ?object
+    {
+        return null;
+    }
+
+    public function getMetaTitleAttribute(): ?string
+    {
+        return $this->seoValue('meta_title');
+    }
+
+    public function getMetaDescriptionAttribute(): ?string
+    {
+        return $this->seoValue('meta_description') ?: $this->excerpt;
+    }
+
+    public function getMetaKeywordsAttribute(): string
+    {
+        $keywords = $this->seo['meta_keywords'] ?? [];
+
+        if (is_array($keywords)) {
+            return implode(', ', $keywords);
+        }
+
+        return (string) $keywords;
+    }
+
+    /**
+     * @return Collection<int, object>
+     */
+    public function getCategoriesAttribute($value): Collection
+    {
+        return $this->taxonomy($value);
+    }
+
+    /**
+     * @return Collection<int, object>
+     */
+    public function getTagsAttribute($value): Collection
+    {
+        return $this->taxonomy($value);
+    }
+
+    private function seoValue(string $key): ?string
+    {
+        $value = $this->seo[$key] ?? null;
+
+        return is_string($value) ? $value : null;
+    }
+
+    /**
+     * @return Collection<int, object>
+     */
+    private function taxonomy($value): Collection
+    {
+        $items = is_string($value) ? json_decode($value, true) : $value;
+
+        return collect(is_array($items) ? $items : [])
+            ->map(function ($item) {
+                if (is_array($item)) {
+                    $name = $item['name'] ?? $item['slug'] ?? '';
+                    $slug = $item['slug'] ?? Str::slug((string) $name);
+                } else {
+                    $name = (string) $item;
+                    $slug = Str::slug($name);
+                }
+
+                return (object) ['name' => $name, 'slug' => $slug];
+            })
+            ->filter(fn ($item) => $item->name !== '')
+            ->values();
     }
 }
