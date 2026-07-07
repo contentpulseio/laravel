@@ -96,8 +96,10 @@ class Content extends Model
     protected function scopeWhereTaxonomy($query, string $column, string $slug)
     {
         return $query->where(function ($inner) use ($column, $slug) {
-            $inner->where($column, 'like', '%"slug":"'.$slug.'"%')
-                ->orWhereJsonContains($column, $slug);
+            $inner->whereRaw(
+                'JSON_SEARCH(`'.$column.'`, "one", ?, NULL, \'$[*].slug\') IS NOT NULL',
+                [$slug]
+            )->orWhereJsonContains($column, $slug);
         });
     }
 
