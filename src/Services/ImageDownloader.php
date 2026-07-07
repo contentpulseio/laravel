@@ -57,7 +57,7 @@ class ImageDownloader
 
     private function enabled(): bool
     {
-        return (bool) $this->config->get('contentpulse.images.download', false);
+        return (bool) $this->config->get('contentpulse.images.download', true);
     }
 
     private function publicUrl(FilesystemAdapter $disk, string $path): string

@@ -148,7 +148,7 @@ return [
     |
     */
     'images' => [
-        'download' => (bool) env('CONTENTPULSE_DOWNLOAD_IMAGES', false),
+        'download' => (bool) env('CONTENTPULSE_DOWNLOAD_IMAGES', true),
         'disk' => env('CONTENTPULSE_IMAGE_DISK', 'public'),
         'path' => env('CONTENTPULSE_IMAGE_PATH', 'media/blog'),
         'relative_url' => (bool) env('CONTENTPULSE_IMAGE_RELATIVE_URL', true),
