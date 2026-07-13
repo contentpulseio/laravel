@@ -36,7 +36,11 @@ class ContentSyncService
             ));
 
             foreach ($feed->items as $item) {
-                $this->upsert($item);
+                // The list endpoint omits heavy fields (rendered_html,
+                // featured_image, etc.). Fetch the full item so synced
+                // records always contain displayable content.
+                $full = $this->client->getContentById($item->id);
+                $this->upsert($full);
                 $synced++;
             }
 
