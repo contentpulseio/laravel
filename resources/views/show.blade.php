@@ -19,9 +19,12 @@
         ->filter(fn ($v) => is_array($v) && ! empty($v['url']))
         ->sortBy(fn ($v) => (int) ($v['width'] ?? 0))
         ->values();
-    $cpOgImage = ($cpImages->firstWhere('width', '>=', 1200)['url'] ?? null)
+    $cpOgImageRaw = ($cpImages->firstWhere('width', '>=', 1200)['url'] ?? null)
         ?? ($cpImages->last()['url'] ?? null)
         ?? $content->featured_image;
+    $cpOgImage = $cpOgImageRaw && ! str_starts_with($cpOgImageRaw, 'http')
+        ? url($cpOgImageRaw)
+        : $cpOgImageRaw;
     $cpHero = $cpImages->last() ?? ['url' => $content->featured_image];
     $cpSrcset = $cpImages
         ->map(fn ($v) => $v['url'].' '.(int) ($v['width'] ?? 0).'w')
