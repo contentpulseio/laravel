@@ -28,10 +28,16 @@
         ->implode(', ');
 
     $cpTaxonomy = function ($item) {
-        $name = is_array($item) ? (string) ($item['name'] ?? '') : (string) $item;
-        $slug = is_array($item) && ! empty($item['slug'])
-            ? (string) $item['slug']
-            : \Illuminate\Support\Str::slug($name);
+        if (is_object($item)) {
+            $name = (string) ($item->name ?? $item->slug ?? '');
+            $slug = (string) ($item->slug ?? \Illuminate\Support\Str::slug($name));
+        } elseif (is_array($item)) {
+            $name = (string) ($item['name'] ?? '');
+            $slug = ! empty($item['slug']) ? (string) $item['slug'] : \Illuminate\Support\Str::slug($name);
+        } else {
+            $name = (string) $item;
+            $slug = \Illuminate\Support\Str::slug($name);
+        }
 
         return ['name' => $name, 'slug' => $slug];
     };
