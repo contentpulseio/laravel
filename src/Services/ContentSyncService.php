@@ -59,28 +59,43 @@ class ContentSyncService
 
     public function upsert(ContentItem $item): Content
     {
+        $attributes = [
+            'slug' => $item->slug,
+            'title' => $item->title,
+            'excerpt' => $item->excerpt,
+            'seo' => $this->seo($item),
+            'status' => $item->status,
+            'content_type' => $item->contentType,
+            'locale' => $item->locale,
+            'word_count' => $item->wordCount,
+            'categories' => $item->categories,
+            'tags' => $item->tags,
+            'published_at' => $this->date($item->publishedAt),
+            'scheduled_at' => $this->date($item->scheduledAt),
+            'content_created_at' => $this->date($item->createdAt),
+            'content_updated_at' => $this->date($item->updatedAt),
+        ];
+
+        // Only overwrite rich-media fields when the API actually returns data.
+        // The list/feed endpoint omits rendered_html, featured_image, and
+        // image_variants to keep responses compact; blindly writing null would
+        // erase values that a previous single-content sync (webhook) stored.
+        if ($item->faq !== []) {
+            $attributes['faq'] = $item->faq;
+        }
+        if ($item->renderedHtml !== null && $item->renderedHtml !== '') {
+            $attributes['rendered_html'] = $item->renderedHtml;
+        }
+        if ($item->featuredImage !== null && $item->featuredImage !== '') {
+            $attributes['featured_image'] = $this->rewriteImage($item->featuredImage);
+        }
+        if ($item->images !== []) {
+            $attributes['image_variants'] = $this->rewriteImageMap($item->images);
+        }
+
         $content = Content::query()->updateOrCreate(
             ['external_id' => $item->id],
-            [
-                'slug' => $item->slug,
-                'title' => $item->title,
-                'excerpt' => $item->excerpt,
-                'faq' => $item->faq,
-                'rendered_html' => $item->renderedHtml,
-                'featured_image' => $this->rewriteImage($item->featuredImage),
-                'image_variants' => $this->rewriteImageMap($item->images),
-                'seo' => $this->seo($item),
-                'status' => $item->status,
-                'content_type' => $item->contentType,
-                'locale' => $item->locale,
-                'word_count' => $item->wordCount,
-                'categories' => $item->categories,
-                'tags' => $item->tags,
-                'published_at' => $this->date($item->publishedAt),
-                'scheduled_at' => $this->date($item->scheduledAt),
-                'content_created_at' => $this->date($item->createdAt),
-                'content_updated_at' => $this->date($item->updatedAt),
-            ],
+            $attributes,
         );
 
         return $content;
