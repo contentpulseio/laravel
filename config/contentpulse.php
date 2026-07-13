@@ -192,6 +192,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Dark Mode
+    |--------------------------------------------------------------------------
+    |
+    | Override the default light-mode CSS variables for dark backgrounds. The
+    | package emits a `@media (prefers-color-scheme: dark)` block that applies
+    | these values. Set `strategy` to:
+    |
+    |   'media'  (default) -> respects the OS/browser prefers-color-scheme.
+    |   'class'  -> uses `.dark .cp-article` (e.g. Tailwind class strategy).
+    |   'none'   -> skip the dark block entirely (host app owns all theming).
+    |
+    | Each colour can be overridden individually; null values keep the
+    | light-mode default.
+    |
+    */
+    'dark' => [
+        'strategy' => env('CONTENTPULSE_DARK_STRATEGY', 'media'),
+        'fg' => env('CONTENTPULSE_DARK_FG', '#e4e4e7'),
+        'muted' => env('CONTENTPULSE_DARK_MUTED', '#a1a1aa'),
+        'border' => env('CONTENTPULSE_DARK_BORDER', '#3f3f46'),
+        'bg_soft' => env('CONTENTPULSE_DARK_BG_SOFT', '#27272a'),
+        'accent' => env('CONTENTPULSE_DARK_ACCENT', '#818cf8'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Call-to-Action Button
     |--------------------------------------------------------------------------
     |

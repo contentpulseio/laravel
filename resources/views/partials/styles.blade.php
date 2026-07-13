@@ -6,6 +6,12 @@
         $cpCtaText = config('contentpulse.cta.text_color', '#ffffff');
         $cpCtaRadius = config('contentpulse.cta.radius', '6px');
         $cpCtaShadow = config('contentpulse.cta.shadow', 'none');
+        $cpDarkStrategy = config('contentpulse.dark.strategy', 'media');
+        $cpDarkFg = config('contentpulse.dark.fg', '#e4e4e7');
+        $cpDarkMuted = config('contentpulse.dark.muted', '#a1a1aa');
+        $cpDarkBorder = config('contentpulse.dark.border', '#3f3f46');
+        $cpDarkBgSoft = config('contentpulse.dark.bg_soft', '#27272a');
+        $cpDarkAccent = config('contentpulse.dark.accent', '#818cf8');
     @endphp
     <style>
         .cp-article, .cp-index {
@@ -44,7 +50,7 @@
         .cp-article__tags .cp-tag::before { content: "#"; opacity: .6; }
         .cp-article h2 { font-size: 1.6rem; margin: 2.5rem 0 1rem; }
         .cp-article h3 { font-size: 1.25rem; margin: 2rem 0 .75rem; }
-        .cp-article p { margin: 0 0 1.1rem; text-align: justify; text-wrap: pretty; hyphens: auto; }
+        .cp-article p { margin: 0 0 1.1rem; text-wrap: pretty; }
         .cp-article a { color: var(--cp-accent); }
 
         .cp-article ul,
@@ -100,5 +106,29 @@
         .cp-index__filter { color: var(--cp-muted); font-size: .95rem; margin: 0 0 1.5rem; }
         .cp-index__filter a { margin-left: .5rem; color: var(--cp-accent); }
         .cp-index__pagination { margin-top: 2.5rem; }
+
+        @if($cpDarkStrategy === 'media')
+        @media (prefers-color-scheme: dark) {
+            .cp-article, .cp-index {
+                --cp-fg: {{ $cpDarkFg }};
+                --cp-muted: {{ $cpDarkMuted }};
+                --cp-border: {{ $cpDarkBorder }};
+                --cp-bg-soft: {{ $cpDarkBgSoft }};
+                --cp-accent: {{ $cpDarkAccent }};
+            }
+            .cp-article tbody tr:nth-child(even) { background: {{ $cpDarkBgSoft }}; }
+            a.cp-cat:hover, a.cp-tag:hover { background: {{ $cpDarkBgSoft }}; }
+        }
+        @elseif($cpDarkStrategy === 'class')
+        .dark .cp-article, .dark .cp-index {
+            --cp-fg: {{ $cpDarkFg }};
+            --cp-muted: {{ $cpDarkMuted }};
+            --cp-border: {{ $cpDarkBorder }};
+            --cp-bg-soft: {{ $cpDarkBgSoft }};
+            --cp-accent: {{ $cpDarkAccent }};
+        }
+        .dark .cp-article tbody tr:nth-child(even) { background: {{ $cpDarkBgSoft }}; }
+        .dark a.cp-cat:hover, .dark a.cp-tag:hover { background: {{ $cpDarkBgSoft }}; }
+        @endif
     </style>
 @endonce
