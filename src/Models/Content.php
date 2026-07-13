@@ -95,6 +95,20 @@ class Content extends Model
 
     protected function scopeWhereTaxonomy($query, string $column, string $slug)
     {
+        $driver = $query->getConnection()->getDriverName();
+
+        if ($driver === 'sqlite') {
+            return $query->where(function ($inner) use ($column, $slug) {
+                $inner->whereRaw(
+                    $column.' LIKE ?',
+                    ['%"slug":"'.$slug.'"%']
+                )->orWhereRaw(
+                    $column.' LIKE ?',
+                    ['%"'.$slug.'"%']
+                );
+            });
+        }
+
         return $query->where(function ($inner) use ($column, $slug) {
             $inner->whereRaw(
                 'JSON_SEARCH(`'.$column.'`, "one", ?, NULL, \'$[*].slug\') IS NOT NULL',
