@@ -30,6 +30,11 @@ return new class extends Migration
             $table->json('categories')->nullable();
             $table->json('tags')->nullable();
 
+            $table->string('author_name')->nullable();
+            $table->string('author_job_title')->nullable();
+            $table->text('author_bio')->nullable();
+            $table->string('author_avatar_url')->nullable();
+
             $table->timestamp('published_at')->nullable()->index();
             $table->timestamp('scheduled_at')->nullable();
             $table->timestamp('content_created_at')->nullable();

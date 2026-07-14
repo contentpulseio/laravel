@@ -26,6 +26,10 @@ use Illuminate\Support\Str;
  * @property int|null $word_count
  * @property array<string, mixed>|null $categories
  * @property array<string, mixed>|null $tags
+ * @property string|null $author_name
+ * @property string|null $author_job_title
+ * @property string|null $author_bio
+ * @property string|null $author_avatar_url
  * @property Carbon|null $published_at
  * @property Carbon|null $scheduled_at
  * @property Carbon|null $content_created_at
@@ -49,6 +53,10 @@ class Content extends Model
         'word_count',
         'categories',
         'tags',
+        'author_name',
+        'author_job_title',
+        'author_bio',
+        'author_avatar_url',
         'published_at',
         'scheduled_at',
         'content_created_at',
