@@ -97,6 +97,21 @@ class ContentSyncService
             $attributes['image_variants'] = $this->rewriteImageMap($item->images);
         }
 
+        $author = $item->raw['website_author'] ?? null;
+        if (is_array($author) && ! empty($author['name'])) {
+            $attributes['author'] = [
+                'name' => $author['name'],
+                'expertise_title' => $author['job_title'] ?? null,
+                'bio' => $author['bio'] ?? null,
+                'avatar_url' => $author['avatar_url'] ?? null,
+            ];
+        }
+
+        $body = $item->raw['body'] ?? $item->raw['current_version']['body'] ?? [];
+        if (! empty($body) && is_array($body)) {
+            $attributes['body'] = $body;
+        }
+
         $content = Content::query()->updateOrCreate(
             ['external_id' => $item->id],
             $attributes,

@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        $table = (string) config('contentpulse.table', 'contentpulse_contents');
+
+        Schema::table($table, function (Blueprint $blueprint) use ($table): void {
+            if (! Schema::hasColumn($table, 'author')) {
+                $blueprint->json('author')->nullable()->after('tags');
+            }
+            if (! Schema::hasColumn($table, 'body')) {
+                $blueprint->json('body')->nullable()->after('rendered_html');
+            }
+        });
+    }
+
+    public function down(): void
+    {
+        $table = (string) config('contentpulse.table', 'contentpulse_contents');
+
+        Schema::table($table, function (Blueprint $blueprint): void {
+            $blueprint->dropColumn(['author', 'body']);
+        });
+    }
+};

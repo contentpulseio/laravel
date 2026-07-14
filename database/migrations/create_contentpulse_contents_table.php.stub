@@ -29,6 +29,8 @@ return new class extends Migration
 
             $table->json('categories')->nullable();
             $table->json('tags')->nullable();
+            $table->json('author')->nullable();
+            $table->json('body')->nullable();
 
             $table->timestamp('published_at')->nullable()->index();
             $table->timestamp('scheduled_at')->nullable();

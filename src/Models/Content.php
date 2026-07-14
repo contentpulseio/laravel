@@ -26,6 +26,8 @@ use Illuminate\Support\Str;
  * @property int|null $word_count
  * @property array<string, mixed>|null $categories
  * @property array<string, mixed>|null $tags
+ * @property array<string, mixed>|null $author
+ * @property array<int, array<string, mixed>>|null $body
  * @property Carbon|null $published_at
  * @property Carbon|null $scheduled_at
  * @property Carbon|null $content_created_at
@@ -49,6 +51,8 @@ class Content extends Model
         'word_count',
         'categories',
         'tags',
+        'author',
+        'body',
         'published_at',
         'scheduled_at',
         'content_created_at',
@@ -61,6 +65,8 @@ class Content extends Model
         'seo' => 'array',
         'categories' => 'array',
         'tags' => 'array',
+        'author' => 'array',
+        'body' => 'array',
         'word_count' => 'integer',
         'published_at' => 'datetime',
         'scheduled_at' => 'datetime',

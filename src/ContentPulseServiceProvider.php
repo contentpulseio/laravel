@@ -22,6 +22,7 @@ class ContentPulseServiceProvider extends PackageServiceProvider
             ->hasConfigFile()
             ->hasViews()
             ->hasMigration('create_contentpulse_contents_table')
+            ->hasMigration('add_author_and_body_to_contentpulse_contents_table')
             ->hasCommand(SyncCommand::class)
             ->hasInstallCommand(function (InstallCommand $command): void {
                 $command
