@@ -115,6 +115,6 @@ class RepairImagesCommandTest extends TestCase
 
         $content = Content::query()->where('external_id', '01TESTARTICLE00000000000002')->first();
         $this->assertNotNull($content);
-        $this->assertSame('/storage/'.$localPath, $content->featured_image);
+        $this->assertSame($localPath, $content->featured_image);
     }
 }

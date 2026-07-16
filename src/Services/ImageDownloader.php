@@ -184,14 +184,9 @@ class ImageDownloader
             return $url;
         }
 
-        $parts = parse_url($url);
-        $relative = $parts['path'] ?? $url;
-
-        if (isset($parts['query'])) {
-            $relative .= '?'.$parts['query'];
-        }
-
-        return $relative;
+        // Store disk-relative paths (e.g. media/blog/x.webp) so host apps can
+        // safely call asset('storage/'.$path) without double-prefixing /storage/.
+        return ltrim($path, '/');
     }
 
     private function disk(): FilesystemAdapter

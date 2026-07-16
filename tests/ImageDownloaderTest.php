@@ -38,7 +38,7 @@ class ImageDownloaderTest extends TestCase
         $result = $this->app->make(ImageDownloader::class)->localize('https://cdn.example.test/hero.webp');
         $expectedPath = 'media/blog/'.sha1('https://cdn.example.test/hero.webp').'.webp';
 
-        $this->assertSame('/storage/'.$expectedPath, $result);
+        $this->assertSame($expectedPath, $result);
         Storage::disk('public')->assertExists($expectedPath);
     }
 
@@ -85,7 +85,7 @@ class ImageDownloaderTest extends TestCase
 
         $result = $this->app->make(ImageDownloader::class)->localize($url);
 
-        $this->assertSame('/storage/'.$path, $result);
+        $this->assertSame($path, $result);
         $this->assertGreaterThanOrEqual(32, Storage::disk('public')->size($path));
     }
 
@@ -98,6 +98,7 @@ class ImageDownloaderTest extends TestCase
         $downloader = $this->app->make(ImageDownloader::class);
 
         $this->assertTrue($downloader->localFileExists('/storage/'.$path));
+        $this->assertTrue($downloader->localFileExists($path));
         $this->assertFalse($downloader->localFileExists('/storage/media/blog/missing.webp'));
     }
 }
