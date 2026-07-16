@@ -81,6 +81,26 @@ events, and set the signing secret to match `CONTENTPULSE_WEBHOOK_SECRET`.
 Published content then syncs automatically; `contentpulse:sync` is only needed
 for the initial backfill.
 
+## Local image downloads
+
+When `CONTENTPULSE_DOWNLOAD_IMAGES=true` (default in the package config), synced
+featured images and variants are fetched onto your filesystem disk and stored as
+app-relative URLs (e.g. `/storage/media/blog/{hash}.webp`). Downloads reject
+empty/HTML responses and only persist a relative URL after the file is verified
+on disk; otherwise the upstream ContentPulse URL is kept.
+
+If local files go missing (disk cleanup, failed deploy, etc.) while the database
+still points at relative URLs, repair them:
+
+```bash
+php artisan contentpulse:repair-images --dry-run
+php artisan contentpulse:repair-images
+php artisan contentpulse:repair-images --external-id=01KXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+`contentpulse:repair-images` re-fetches each affected item from the API and
+re-runs image localization.
+
 ## Using your own design (decoupled read model)
 
 Already have a blog with your own `Post` model, controller, views, and SEO?

@@ -6,6 +6,7 @@ namespace ContentPulse\Laravel;
 
 use ContentPulse\Core\Contracts\ContentClientInterface;
 use ContentPulse\Http\ContentPulseClient;
+use ContentPulse\Laravel\Commands\RepairImagesCommand;
 use ContentPulse\Laravel\Commands\SyncCommand;
 use Illuminate\Contracts\Foundation\Application;
 use Psr\Log\LoggerInterface;
@@ -23,7 +24,7 @@ class ContentPulseServiceProvider extends PackageServiceProvider
             ->hasViews()
             ->hasMigration('create_contentpulse_contents_table')
             ->hasMigration('add_author_and_body_to_contentpulse_contents_table')
-            ->hasCommand(SyncCommand::class)
+            ->hasCommands(SyncCommand::class, RepairImagesCommand::class)
             ->hasInstallCommand(function (InstallCommand $command): void {
                 $command
                     ->publishConfigFile()

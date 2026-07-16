@@ -55,6 +55,11 @@ class ServiceProviderTest extends TestCase
         $this->assertArrayHasKey('contentpulse:sync', Artisan::all());
     }
 
+    public function test_repair_images_command_is_registered(): void
+    {
+        $this->assertArrayHasKey('contentpulse:repair-images', Artisan::all());
+    }
+
     public function test_install_command_is_registered(): void
     {
         $this->assertArrayHasKey('contentpulse:install', Artisan::all());
