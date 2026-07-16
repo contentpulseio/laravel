@@ -77,7 +77,9 @@ class ContentSyncService
             'published_at' => $this->date($item->publishedAt),
             'scheduled_at' => $this->date($item->scheduledAt),
             'content_created_at' => $this->date($item->createdAt),
-            'content_updated_at' => $this->date($item->updatedAt),
+            // Editorial update only — never Laravel Content.updated_at from the API
+            // (admin/import touches bump that without changing article body).
+            'content_updated_at' => $this->date($this->editorialUpdatedAt($item)),
         ];
 
         // Only overwrite rich-media fields when the API actually returns data.
@@ -123,6 +125,25 @@ class ContentSyncService
     private function date(?DateTimeImmutable $value): ?string
     {
         return $value?->format('Y-m-d H:i:s');
+    }
+
+    /**
+     * Prefer API last_refreshed_at (editorial refresh / SC optimized_at), then
+     * published_at. Never use Laravel row updated_at from the payload.
+     */
+    private function editorialUpdatedAt(ContentItem $item): ?DateTimeImmutable
+    {
+        $raw = $item->raw['last_refreshed_at'] ?? null;
+        if (is_string($raw) && $raw !== '') {
+            $parsed = DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s.u\Z', $raw)
+                ?: DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s\Z', $raw)
+                ?: DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $raw);
+            if ($parsed instanceof DateTimeImmutable) {
+                return $parsed;
+            }
+        }
+
+        return $item->updatedAt ?? $item->publishedAt;
     }
 
     /**
