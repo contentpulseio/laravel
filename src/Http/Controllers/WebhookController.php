@@ -24,7 +24,8 @@ class WebhookController
 
         try {
             match ($event) {
-                'content.created', 'content.updated', 'content.published' => $sync->syncById($contentId),
+                'content.created', 'content.updated', 'content.published',
+                'content.translation.published', 'content.translation.unpublished' => $sync->syncById($contentId),
                 'content.deleted' => $sync->deleteByExternalId($contentId),
                 default => null,
             };
