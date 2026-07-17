@@ -63,6 +63,8 @@ class ContentSyncService
 
     public function upsert(ContentItem $item): Content
     {
+        $existing = Content::query()->where('external_id', $item->id)->first();
+
         $attributes = [
             'slug' => $item->slug,
             'title' => $item->title,
@@ -93,10 +95,14 @@ class ContentSyncService
             $attributes['rendered_html'] = $item->renderedHtml;
         }
         if ($item->featuredImage !== null && $item->featuredImage !== '') {
-            $attributes['featured_image'] = $this->rewriteImage($item->featuredImage);
+            $attributes['featured_image'] = $this->resolveImageUrl(
+                $item->featuredImage,
+                $existing?->featured_image,
+            );
         }
         if ($item->images !== []) {
-            $attributes['image_variants'] = $this->rewriteImageMap($item->images);
+            $existingVariants = is_array($existing?->image_variants) ? $existing->image_variants : [];
+            $attributes['image_variants'] = $this->rewriteImageMap($item->images, $existingVariants);
         }
 
         $author = $item->raw['website_author'] ?? null;
@@ -168,6 +174,34 @@ class ContentSyncService
         return $seo === [] ? null : $seo;
     }
 
+    /**
+     * Prefer the already-published SC public URL when its local file still
+     * exists. Prevents Google Image SEO churn when ContentPulse changes the
+     * upstream absolute URL (which would otherwise produce a new
+     * media/blog/{sha1(url)} path).
+     */
+    private function resolveImageUrl(string $upstream, ?string $existingPublicUrl): ?string
+    {
+        if ($this->shouldPreserveExistingUrl($existingPublicUrl)) {
+            return $existingPublicUrl;
+        }
+
+        return $this->rewriteImage($upstream);
+    }
+
+    private function shouldPreserveExistingUrl(?string $existingPublicUrl): bool
+    {
+        if ($existingPublicUrl === null || $existingPublicUrl === '') {
+            return false;
+        }
+
+        if (! (bool) $this->config->get('contentpulse.images.preserve_existing_urls', true)) {
+            return false;
+        }
+
+        return $this->images->localFileExists($existingPublicUrl);
+    }
+
     private function rewriteImage(?string $url): ?string
     {
         if ($url === null || $url === '') {
@@ -185,19 +219,35 @@ class ContentSyncService
      * Rewrite string values directly and the `url` field of nested variants.
      *
      * @param  array<string, mixed>  $images
+     * @param  array<string, mixed>  $existing
      * @return array<string, mixed>
      */
-    private function rewriteImageMap(array $images): array
+    private function rewriteImageMap(array $images, array $existing = []): array
     {
         foreach ($images as $key => $value) {
+            $existingUrl = $this->existingVariantUrl($existing[$key] ?? null);
+
             if (is_string($value)) {
-                $images[$key] = $this->rewriteImage($value);
+                $images[$key] = $this->resolveImageUrl($value, $existingUrl);
             } elseif (is_array($value) && isset($value['url']) && is_string($value['url'])) {
-                $value['url'] = $this->rewriteImage($value['url']);
+                $value['url'] = $this->resolveImageUrl($value['url'], $existingUrl);
                 $images[$key] = $value;
             }
         }
 
         return $images;
+    }
+
+    private function existingVariantUrl(mixed $value): ?string
+    {
+        if (is_string($value) && $value !== '') {
+            return $value;
+        }
+
+        if (is_array($value) && isset($value['url']) && is_string($value['url']) && $value['url'] !== '') {
+            return $value['url'];
+        }
+
+        return null;
     }
 }

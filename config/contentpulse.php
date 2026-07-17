@@ -152,6 +152,10 @@ return [
         'disk' => env('CONTENTPULSE_IMAGE_DISK', 'public'),
         'path' => env('CONTENTPULSE_IMAGE_PATH', 'media/blog'),
         'relative_url' => (bool) env('CONTENTPULSE_IMAGE_RELATIVE_URL', true),
+        // When true (default), sync keeps the existing public image URL if the
+        // local file still exists — avoids Google Image SEO churn when the
+        // upstream ContentPulse URL path changes on refresh.
+        'preserve_existing_urls' => (bool) env('CONTENTPULSE_PRESERVE_IMAGE_URLS', true),
     ],
 
     /*
