@@ -41,6 +41,7 @@ class ContentSyncService
                 // records always contain displayable content.
                 $full = $this->client->getContentById($item->id);
                 $this->upsert($full);
+                $this->syncLiveTranslations($full);
                 $synced++;
             }
 
@@ -53,12 +54,51 @@ class ContentSyncService
 
     public function syncById(string $ulid): Content
     {
-        return $this->upsert($this->client->getContentById($ulid));
+        $item = $this->client->getContentById($ulid);
+        $content = $this->upsert($item);
+        $this->syncLiveTranslations($item);
+
+        return $content;
+    }
+
+    /**
+     * Sync completed+published translations for a parent content item into
+     * contentpulse_contents rows with locale set and external_id "{ulid}__{locale}".
+     *
+     * @return int Number of translation rows upserted
+     */
+    public function syncLiveTranslations(ContentItem $parent): int
+    {
+        $synced = 0;
+
+        try {
+            $summaries = $this->client->listContentTranslations($parent->id);
+        } catch (\Throwable) {
+            return 0;
+        }
+
+        foreach ($summaries as $summary) {
+            if (! $summary->isLive || $summary->locale === '') {
+                continue;
+            }
+
+            try {
+                $translation = $this->client->getContentTranslation($parent->id, $summary->locale);
+                $this->upsert($translation->toContentItem($parent));
+                $synced++;
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        return $synced;
     }
 
     public function deleteByExternalId(string $ulid): void
     {
         Content::query()->where('external_id', $ulid)->delete();
+        // Also drop locale rows derived from this parent.
+        Content::query()->where('external_id', 'like', $ulid.'__%')->delete();
     }
 
     public function upsert(ContentItem $item): Content
