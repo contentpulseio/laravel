@@ -73,7 +73,12 @@ class ContentSyncService
 
         try {
             $summaries = $this->client->listContentTranslations($parent->id);
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            logger()->warning('ContentPulse: listContentTranslations failed', [
+                'parent_id' => $parent->id,
+                'error' => $e->getMessage(),
+            ]);
+
             return 0;
         }
 
@@ -86,7 +91,13 @@ class ContentSyncService
                 $translation = $this->client->getContentTranslation($parent->id, $summary->locale);
                 $this->upsert($translation->toContentItem($parent));
                 $synced++;
-            } catch (\Throwable) {
+            } catch (\Throwable $e) {
+                logger()->warning('ContentPulse: sync translation failed', [
+                    'parent_id' => $parent->id,
+                    'locale' => $summary->locale,
+                    'error' => $e->getMessage(),
+                ]);
+
                 continue;
             }
         }

@@ -13,7 +13,9 @@ return new class extends Migration
         Schema::create($this->table(), function (Blueprint $table): void {
             $table->id();
             $table->string('external_id')->unique();
-            $table->string('slug')->unique();
+            // Translations share the parent slug; uniqueness is (slug, locale).
+            $table->string('slug');
+            $table->unique(['slug', 'locale']);
             $table->string('title');
             $table->text('excerpt')->nullable();
             $table->longText('rendered_html')->nullable();
