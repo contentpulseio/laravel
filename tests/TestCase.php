@@ -36,6 +36,13 @@ abstract class TestCase extends Orchestra
         $config->set('contentpulse.webhook_secret', 'shhh-secret');
         $config->set('contentpulse.layout', 'layouts.app');
         $config->set('contentpulse.table', 'contentpulse_contents');
+        $config->set('contentpulse.images.disk', 'public');
+        $config->set('filesystems.disks.public', [
+            'driver' => 'local',
+            'root' => storage_path('app/public'),
+            'url' => '/storage',
+            'visibility' => 'public',
+        ]);
 
         // Host app owns the layout chrome; register the fixture layout.
         $config->set('view.paths', array_merge(

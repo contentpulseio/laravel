@@ -15,17 +15,27 @@
         ->filter()
         ->implode(', ');
 
+    $cpImageUrl = static function (?string $stored): ?string {
+        return app(\ContentPulse\Laravel\Services\ImageDownloader::class)->toPublicUrl($stored);
+    };
+
     $cpImages = collect($content->image_variants ?? [])
         ->filter(fn ($v) => is_array($v) && ! empty($v['url']))
+        ->map(function (array $v) use ($cpImageUrl) {
+            $v['url'] = $cpImageUrl($v['url']) ?? $v['url'];
+
+            return $v;
+        })
         ->sortBy(fn ($v) => (int) ($v['width'] ?? 0))
         ->values();
+    $cpFeaturedImage = $cpImageUrl($content->featured_image);
     $cpOgImageRaw = ($cpImages->firstWhere('width', '>=', 1200)['url'] ?? null)
         ?? ($cpImages->last()['url'] ?? null)
-        ?? $content->featured_image;
+        ?? $cpFeaturedImage;
     $cpOgImage = $cpOgImageRaw && ! str_starts_with($cpOgImageRaw, 'http')
         ? url($cpOgImageRaw)
         : $cpOgImageRaw;
-    $cpHero = $cpImages->last() ?? ['url' => $content->featured_image];
+    $cpHero = $cpImages->last() ?? ['url' => $cpFeaturedImage];
     $cpSrcset = $cpImages
         ->map(fn ($v) => $v['url'].' '.(int) ($v['width'] ?? 0).'w')
         ->implode(', ');
@@ -104,10 +114,10 @@
 
         <h1 class="cp-article__title">{{ $content->title }}</h1>
 
-        @if (! empty($content->featured_image))
+        @if (! empty($cpFeaturedImage))
             <figure class="cp-article__hero-image">
                 <img
-                    src="{{ $cpHero['url'] ?? $content->featured_image }}"
+                    src="{{ $cpHero['url'] ?? $cpFeaturedImage }}"
                     @if (! empty($cpSrcset)) srcset="{{ $cpSrcset }}" sizes="(max-width: 768px) 100vw, 768px" @endif
                     @if (! empty($cpHero['width'])) width="{{ (int) $cpHero['width'] }}" @endif
                     @if (! empty($cpHero['height'])) height="{{ (int) $cpHero['height'] }}" @endif

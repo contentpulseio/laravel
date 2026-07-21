@@ -64,6 +64,29 @@ class ImageDownloader
         return $this->hasValidFile($this->disk(), $path);
     }
 
+    /**
+     * Convert a stored image reference into a browser-safe public URL.
+     *
+     * Accepts absolute http(s) URLs, already-rooted public paths (/storage/...),
+     * and disk-relative paths (media/blog/x.webp) produced by localize().
+     */
+    public function toPublicUrl(?string $stored): ?string
+    {
+        if ($stored === null || $stored === '') {
+            return null;
+        }
+
+        if ($this->isAbsoluteHttpUrl($stored)) {
+            return $stored;
+        }
+
+        if (str_starts_with($stored, '/')) {
+            return $stored;
+        }
+
+        return $this->disk()->url(ltrim($stored, '/'));
+    }
+
     private function enabled(): bool
     {
         return (bool) $this->config->get('contentpulse.images.download', true);

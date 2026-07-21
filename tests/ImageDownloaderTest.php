@@ -101,4 +101,25 @@ class ImageDownloaderTest extends TestCase
         $this->assertTrue($downloader->localFileExists($path));
         $this->assertFalse($downloader->localFileExists('/storage/media/blog/missing.webp'));
     }
+
+    public function test_to_public_url_prefixes_disk_relative_paths(): void
+    {
+        Storage::fake('public');
+        $downloader = $this->app->make(ImageDownloader::class);
+
+        $this->assertSame(
+            '/storage/media/guides/hero.webp',
+            $downloader->toPublicUrl('media/guides/hero.webp'),
+        );
+        $this->assertSame(
+            '/storage/media/guides/hero.webp',
+            $downloader->toPublicUrl('/storage/media/guides/hero.webp'),
+        );
+        $this->assertSame(
+            'https://cdn.example.test/hero.webp',
+            $downloader->toPublicUrl('https://cdn.example.test/hero.webp'),
+        );
+        $this->assertNull($downloader->toPublicUrl(null));
+        $this->assertNull($downloader->toPublicUrl(''));
+    }
 }

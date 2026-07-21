@@ -116,4 +116,32 @@ class RenderingTest extends TestCase
         $response->assertSee('Getting Started Guide', false);
         $response->assertSee('Second Post', false);
     }
+
+    public function test_show_route_resolves_disk_relative_featured_image_to_storage_url(): void
+    {
+        $this->makeContent([
+            'featured_image' => 'media/guides/hero.webp',
+            'image_variants' => [
+                'og' => [
+                    'url' => 'media/guides/og.webp',
+                    'width' => 1200,
+                    'height' => 630,
+                ],
+                'thumbnail' => [
+                    'url' => 'media/guides/thumb.webp',
+                    'width' => 320,
+                    'height' => 175,
+                ],
+            ],
+        ]);
+
+        $response = $this->get(route('contentpulse.show', 'getting-started'));
+
+        $response->assertOk();
+        $response->assertSee('src="/storage/media/guides/og.webp"', false);
+        $response->assertSee('/storage/media/guides/thumb.webp 320w', false);
+        $response->assertSee('content="'.url('/storage/media/guides/og.webp').'"', false);
+        $response->assertSee('"image":"'.url('/storage/media/guides/hero.webp').'"', false);
+        $response->assertDontSee('src="media/guides/', false);
+    }
 }

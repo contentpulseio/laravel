@@ -9,7 +9,10 @@ use Illuminate\Contracts\Config\Repository as Config;
 
 class SeoBuilder
 {
-    public function __construct(private readonly Config $config) {}
+    public function __construct(
+        private readonly Config $config,
+        private readonly ImageDownloader $images,
+    ) {}
 
     /**
      * @return array<int, array<string, mixed>>
@@ -40,13 +43,17 @@ class SeoBuilder
         }
 
         $seo = $content->seo ?? [];
+        $image = $this->images->toPublicUrl($content->featured_image);
+        if (is_string($image) && $image !== '' && ! str_starts_with($image, 'http')) {
+            $image = url($image);
+        }
 
         return array_filter([
             '@context' => 'https://schema.org',
             '@type' => 'Article',
             'headline' => $content->title,
             'description' => $seo['meta_description'] ?? $content->excerpt,
-            'image' => $content->featured_image,
+            'image' => $image,
             'inLanguage' => $content->locale,
             'datePublished' => $content->published_at?->toIso8601String(),
             'dateModified' => $content->content_updated_at?->toIso8601String(),

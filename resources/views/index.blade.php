@@ -31,7 +31,7 @@
                     <a class="cp-card" href="{{ route('contentpulse.show', $item->slug) }}">
                         @if (! empty($item->featured_image))
                             <div class="cp-card__media">
-                                <img src="{{ $item->featured_image }}" alt="{{ $item->title }}" loading="lazy" decoding="async">
+                                <img src="{{ app(\ContentPulse\Laravel\Services\ImageDownloader::class)->toPublicUrl($item->featured_image) }}" alt="{{ $item->title }}" loading="lazy" decoding="async">
                             </div>
                         @endif
                         <div class="cp-card__body">
