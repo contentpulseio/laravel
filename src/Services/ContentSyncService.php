@@ -40,6 +40,11 @@ class ContentSyncService
                 // featured_image, etc.). Fetch the full item so synced
                 // records always contain displayable content.
                 $full = $this->client->getContentById($item->id);
+                if ($this->isExclusiveExternalChannel($full)) {
+                    $this->deleteByExternalId($full->id);
+
+                    continue;
+                }
                 $this->upsert($full);
                 $this->syncLiveTranslations($full);
                 $synced++;
@@ -55,6 +60,21 @@ class ContentSyncService
     public function syncById(string $ulid): Content
     {
         $item = $this->client->getContentById($ulid);
+
+        // Exclusive external channels (dev.to, LinkedIn Pulse, Medium, …) are
+        // status=published for ContentPulse lifecycle tracking but must never
+        // appear on the headless website. Purge any previously-synced row.
+        if ($this->isExclusiveExternalChannel($item)) {
+            $this->deleteByExternalId($ulid);
+
+            return Content::query()->make([
+                'external_id' => $ulid,
+                'slug' => $item->slug,
+                'title' => $item->title,
+                'status' => $item->status,
+            ]);
+        }
+
         $content = $this->upsert($item);
         $this->syncLiveTranslations($item);
 
@@ -300,5 +320,19 @@ class ContentSyncService
         }
 
         return null;
+    }
+
+    /**
+     * Null / missing publish_channel is treated as the website channel
+     * (legacy default). Any other value is an exclusive external destination.
+     */
+    private function isExclusiveExternalChannel(ContentItem $item): bool
+    {
+        $channel = $item->raw['publish_channel'] ?? null;
+        if ($channel === null || $channel === '' || $channel === 'website') {
+            return false;
+        }
+
+        return is_string($channel);
     }
 }

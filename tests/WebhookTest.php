@@ -130,6 +130,42 @@ class WebhookTest extends TestCase
         );
     }
 
+    public function test_published_event_purges_exclusive_external_channel_items(): void
+    {
+        Content::query()->create([
+            'external_id' => '01HXDEVTOONLY',
+            'slug' => 'dev-to-only',
+            'title' => 'Should Not Stay On Website',
+            'status' => 'published',
+        ]);
+
+        $item = ContentItem::fromApiResponse([
+            'id' => '01HXDEVTOONLY',
+            'slug' => 'dev-to-only',
+            'title' => 'Should Not Stay On Website',
+            'status' => 'published',
+            'content_type' => 'article',
+            'publish_channel' => 'dev_to',
+            'rendered_html' => '<p>Exclusive to dev.to</p>',
+        ]);
+
+        $client = Mockery::mock(ContentPulseClient::class);
+        $client->shouldReceive('getContentById')
+            ->once()
+            ->with('01HXDEVTOONLY')
+            ->andReturn($item);
+
+        $this->app->instance(ContentPulseClient::class, $client);
+
+        $response = $this->postWebhook([
+            'event' => 'content.published',
+            'data' => ['content_id' => '01HXDEVTOONLY'],
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseMissing('contentpulse_contents', ['external_id' => '01HXDEVTOONLY']);
+    }
+
     protected function tearDown(): void
     {
         Mockery::close();
