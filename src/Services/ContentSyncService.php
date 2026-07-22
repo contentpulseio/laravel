@@ -13,11 +13,25 @@ use Illuminate\Contracts\Config\Repository as Config;
 
 class ContentSyncService
 {
+    private bool $forceImageRefresh = false;
+
     public function __construct(
         private readonly ContentPulseClient $client,
         private readonly Config $config,
         private readonly ImageDownloader $images,
     ) {}
+
+    /**
+     * Force image re-download on the next sync call(s). Used by
+     * contentpulse:repair-images --force so preserve_existing_urls does not
+     * leave stale local bytes in place.
+     */
+    public function withForcedImageRefresh(bool $force = true): self
+    {
+        $this->forceImageRefresh = $force;
+
+        return $this;
+    }
 
     public function syncAll(?string $locale = null): int
     {
@@ -59,26 +73,30 @@ class ContentSyncService
 
     public function syncById(string $ulid): Content
     {
-        $item = $this->client->getContentById($ulid);
+        try {
+            $item = $this->client->getContentById($ulid);
 
-        // Exclusive external channels (dev.to, LinkedIn Pulse, Medium, …) are
-        // status=published for ContentPulse lifecycle tracking but must never
-        // appear on the headless website. Purge any previously-synced row.
-        if ($this->isExclusiveExternalChannel($item)) {
-            $this->deleteByExternalId($ulid);
+            // Exclusive external channels (dev.to, LinkedIn Pulse, Medium, …) are
+            // status=published for ContentPulse lifecycle tracking but must never
+            // appear on the headless website. Purge any previously-synced row.
+            if ($this->isExclusiveExternalChannel($item)) {
+                $this->deleteByExternalId($ulid);
 
-            return Content::query()->make([
-                'external_id' => $ulid,
-                'slug' => $item->slug,
-                'title' => $item->title,
-                'status' => $item->status,
-            ]);
+                return Content::query()->make([
+                    'external_id' => $ulid,
+                    'slug' => $item->slug,
+                    'title' => $item->title,
+                    'status' => $item->status,
+                ]);
+            }
+
+            $content = $this->upsert($item);
+            $this->syncLiveTranslations($item);
+
+            return $content;
+        } finally {
+            $this->forceImageRefresh = false;
         }
-
-        $content = $this->upsert($item);
-        $this->syncLiveTranslations($item);
-
-        return $content;
     }
 
     /**
@@ -250,14 +268,24 @@ class ContentSyncService
      * exists. Prevents Google Image SEO churn when ContentPulse changes the
      * upstream absolute URL (which would otherwise produce a new
      * media/blog/{sha1(url)} path).
+     *
+     * Still refreshes local file bytes from upstream when `?v=` is newer (or
+     * when force-refresh is on) so republished/regenerated images replace the
+     * stale local copy without changing the public URL.
      */
     private function resolveImageUrl(string $upstream, ?string $existingPublicUrl): ?string
     {
+        /** @var array<string, string> $rewrites */
+        $rewrites = $this->config->get('contentpulse.image_host_rewrites', []);
+        $upstream = strtr($upstream, $rewrites);
+
         if ($this->shouldPreserveExistingUrl($existingPublicUrl)) {
+            $this->images->downloadInto($upstream, $existingPublicUrl, $this->forceImageRefresh);
+
             return $existingPublicUrl;
         }
 
-        return $this->rewriteImage($upstream);
+        return $this->images->localize($upstream, $this->forceImageRefresh);
     }
 
     private function shouldPreserveExistingUrl(?string $existingPublicUrl): bool
@@ -279,10 +307,7 @@ class ContentSyncService
             return $url;
         }
 
-        /** @var array<string, string> $rewrites */
-        $rewrites = $this->config->get('contentpulse.image_host_rewrites', []);
-
-        return $this->images->localize(strtr($url, $rewrites));
+        return $this->resolveImageUrl($url, null);
     }
 
     /**

@@ -25,7 +25,16 @@ class ImageDownloader
         private readonly ?LoggerInterface $logger = null,
     ) {}
 
-    public function localize(?string $url): ?string
+    /**
+     * Download an upstream image into a stable local path keyed by URL path
+     * (query string ignored for the filename so SEO URLs stay stable).
+     *
+     * Re-downloads when the local file is missing/empty, when ContentPulse's
+     * `?v=` cache-buster is newer than the local file mtime, or when $force
+     * is true. This is what makes republish/image-regenerate actually replace
+     * stale local copies.
+     */
+    public function localize(?string $url, bool $force = false): ?string
     {
         if ($url === null || $url === '' || ! $this->enabled()) {
             return $url;
@@ -38,11 +47,43 @@ class ImageDownloader
         $path = $this->targetPath($url);
         $disk = $this->disk();
 
-        if (! $this->hasValidFile($disk, $path) && ! $this->download($disk, $path, $url)) {
-            return $url;
+        if ($this->shouldRedownload($disk, $path, $url, $force)) {
+            if (! $this->download($disk, $path, $url) && ! $this->hasValidFile($disk, $path)) {
+                return $url;
+            }
         }
 
         return $this->publicUrl($disk, $path);
+    }
+
+    /**
+     * Download upstream bytes into an already-published local public URL path.
+     * Keeps the public URL stable (Image SEO) while replacing file contents when
+     * the upstream cache-buster indicates a newer image.
+     */
+    public function downloadInto(?string $upstreamUrl, string $existingPublicUrl, bool $force = false): bool
+    {
+        if ($upstreamUrl === null || $upstreamUrl === '' || ! $this->enabled()) {
+            return false;
+        }
+
+        if (! $this->isAbsoluteHttpUrl($upstreamUrl)) {
+            return false;
+        }
+
+        $path = $this->diskPathFromPublicUrl($existingPublicUrl);
+
+        if ($path === null) {
+            return false;
+        }
+
+        $disk = $this->disk();
+
+        if (! $this->shouldRedownload($disk, $path, $upstreamUrl, $force)) {
+            return $this->hasValidFile($disk, $path);
+        }
+
+        return $this->download($disk, $path, $upstreamUrl);
     }
 
     /**
@@ -90,6 +131,52 @@ class ImageDownloader
     private function enabled(): bool
     {
         return (bool) $this->config->get('contentpulse.images.download', true);
+    }
+
+    private function shouldRedownload(FilesystemAdapter $disk, string $path, string $url, bool $force): bool
+    {
+        if ($force || ! $this->hasValidFile($disk, $path)) {
+            return true;
+        }
+
+        return $this->isStale($disk, $path, $url);
+    }
+
+    /**
+     * ContentPulse appends `?v={unix}` to featured_image_url when the content
+     * or version changes. Local paths intentionally ignore the query string, so
+     * we compare that bust value to the on-disk mtime to detect stale copies.
+     */
+    private function isStale(FilesystemAdapter $disk, string $path, string $url): bool
+    {
+        $version = $this->cacheBustVersion($url);
+
+        if ($version === null) {
+            return false;
+        }
+
+        try {
+            return $disk->lastModified($path) < $version;
+        } catch (Throwable) {
+            return true;
+        }
+    }
+
+    private function cacheBustVersion(string $url): ?int
+    {
+        $query = parse_url($url, PHP_URL_QUERY);
+
+        if (! is_string($query) || $query === '') {
+            return null;
+        }
+
+        parse_str($query, $params);
+
+        if (! isset($params['v']) || ! is_numeric($params['v'])) {
+            return null;
+        }
+
+        return (int) $params['v'];
     }
 
     private function download(FilesystemAdapter $disk, string $path, string $url): bool
@@ -235,6 +322,8 @@ class ImageDownloader
         $ext = pathinfo((string) parse_url($withoutQuery, PHP_URL_PATH), PATHINFO_EXTENSION);
         $ext = $ext !== '' ? mb_strtolower($ext) : 'jpg';
 
+        // Hash the path without ?v= so the public URL stays stable across
+        // regenerations; freshness is handled by shouldRedownload()/isStale().
         return $base.'/'.sha1($withoutQuery).'.'.$ext;
     }
 }

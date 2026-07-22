@@ -56,6 +56,7 @@ class ContentSyncPreserveImagesTest extends TestCase
             'image_variants' => [],
         ]);
 
+        // No ?v= → preserve URL and leave bytes untouched (not stale).
         $newUpstream = 'https://cdn.example.test/brand-new-path/hero.webp';
         $item = ContentItem::fromApiResponse([
             'id' => '01TESTPRESERVE0000000000001',
@@ -90,6 +91,62 @@ class ContentSyncPreserveImagesTest extends TestCase
         $this->assertNotNull($content);
         $this->assertSame($existingUrl, $content->featured_image);
         Storage::disk('public')->assertMissing('media/blog/'.sha1($newUpstream).'.webp');
+        $this->assertSame(str_repeat('A', 96), Storage::disk('public')->get($existingPath));
+        Http::assertNothingSent();
+    }
+
+    public function test_sync_refreshes_preserved_file_bytes_when_cache_bust_is_newer(): void
+    {
+        Storage::fake('public');
+
+        $existingPath = 'media/blog/stable-old.webp';
+        $existingUrl = '/storage/'.$existingPath;
+        Storage::disk('public')->put($existingPath, str_repeat('A', 96));
+
+        Content::query()->create([
+            'external_id' => '01TESTPRESERVE0000000000003',
+            'slug' => 'refresh-me',
+            'title' => 'Refresh Me',
+            'status' => 'published',
+            'featured_image' => $existingUrl,
+            'image_variants' => [],
+        ]);
+
+        $newUpstream = 'https://cdn.example.test/brand-new-path/hero.webp?v='.(time() + 3600);
+        $item = ContentItem::fromApiResponse([
+            'id' => '01TESTPRESERVE0000000000003',
+            'slug' => 'refresh-me',
+            'title' => 'Refresh Me',
+            'excerpt' => 'Hello',
+            'status' => 'published',
+            'content_type' => 'article',
+            'locale' => 'en',
+            'word_count' => 10,
+            'featured_image_url' => $newUpstream,
+            'image_variants' => [],
+            'categories' => [],
+            'tags' => [],
+            'faq' => [],
+            'published_at' => '2026-07-15T12:00:00Z',
+            'created_at' => '2026-07-15T12:00:00Z',
+            'updated_at' => '2026-07-15T12:00:00Z',
+        ]);
+
+        $client = Mockery::mock(ContentPulseClient::class);
+        $client->shouldReceive('getContentById')->andReturn($item);
+        $this->app->instance(ContentPulseClient::class, $client);
+
+        Http::fake([
+            $newUpstream => Http::response(str_repeat('B', 96), 200, ['Content-Type' => 'image/webp']),
+        ]);
+
+        $this->app->make(ContentSyncService::class)->syncById('01TESTPRESERVE0000000000003');
+
+        $content = Content::query()->where('external_id', '01TESTPRESERVE0000000000003')->first();
+        $this->assertNotNull($content);
+        $this->assertSame($existingUrl, $content->featured_image);
+        $this->assertSame(str_repeat('B', 96), Storage::disk('public')->get($existingPath));
+        Storage::disk('public')->assertMissing('media/blog/'.sha1(explode('?', $newUpstream, 2)[0]).'.webp');
     }
 
     public function test_sync_rewrites_featured_url_when_local_file_missing(): void

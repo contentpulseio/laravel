@@ -154,7 +154,9 @@ return [
         'relative_url' => (bool) env('CONTENTPULSE_IMAGE_RELATIVE_URL', true),
         // When true (default), sync keeps the existing public image URL if the
         // local file still exists — avoids Google Image SEO churn when the
-        // upstream ContentPulse URL path changes on refresh.
+        // upstream ContentPulse URL path changes on refresh. Local file bytes
+        // still refresh when upstream ?v= is newer than on-disk mtime (or when
+        // contentpulse:repair-images --force is used).
         'preserve_existing_urls' => (bool) env('CONTENTPULSE_PRESERVE_IMAGE_URLS', true),
     ],
 

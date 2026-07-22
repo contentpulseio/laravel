@@ -65,7 +65,11 @@ class RepairImagesCommand extends Command
             }
 
             try {
-                $sync->syncById($content->external_id);
+                if ($force) {
+                    $sync->withForcedImageRefresh()->syncById($content->external_id);
+                } else {
+                    $sync->syncById($content->external_id);
+                }
                 $fresh = $content->fresh() ?? $content;
                 $stillMissing = $this->missingLocalUrls($fresh, $images);
 

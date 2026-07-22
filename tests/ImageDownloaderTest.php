@@ -89,6 +89,84 @@ class ImageDownloaderTest extends TestCase
         $this->assertGreaterThanOrEqual(32, Storage::disk('public')->size($path));
     }
 
+    public function test_localize_redownloads_when_cache_bust_is_newer_than_local_file(): void
+    {
+        Storage::fake('public');
+        $baseUrl = 'https://cdn.example.test/hero.webp';
+        $path = 'media/blog/'.sha1($baseUrl).'.webp';
+        Storage::disk('public')->put($path, str_repeat('OLD', 32));
+
+        // Storage::fake lastModified is "now"; use a future ?v= to mark stale.
+        $freshUrl = $baseUrl.'?v='.(time() + 3600);
+
+        Http::fake([
+            $freshUrl => Http::response(str_repeat('NEW', 32), 200, ['Content-Type' => 'image/webp']),
+        ]);
+
+        $result = $this->app->make(ImageDownloader::class)->localize($freshUrl);
+
+        $this->assertSame($path, $result);
+        $this->assertSame(str_repeat('NEW', 32), Storage::disk('public')->get($path));
+    }
+
+    public function test_localize_skips_redownload_when_cache_bust_is_not_newer(): void
+    {
+        Storage::fake('public');
+        $baseUrl = 'https://cdn.example.test/stable.webp';
+        $path = 'media/blog/'.sha1($baseUrl).'.webp';
+        Storage::disk('public')->put($path, str_repeat('KEEP', 32));
+
+        $staleBustUrl = $baseUrl.'?v=1';
+
+        Http::fake([
+            $staleBustUrl => Http::response(str_repeat('NEW', 32), 200, ['Content-Type' => 'image/webp']),
+        ]);
+
+        $result = $this->app->make(ImageDownloader::class)->localize($staleBustUrl);
+
+        $this->assertSame($path, $result);
+        $this->assertSame(str_repeat('KEEP', 32), Storage::disk('public')->get($path));
+        Http::assertNothingSent();
+    }
+
+    public function test_localize_force_overwrites_even_without_newer_cache_bust(): void
+    {
+        Storage::fake('public');
+        $url = 'https://cdn.example.test/force.webp';
+        $path = 'media/blog/'.sha1($url).'.webp';
+        Storage::disk('public')->put($path, str_repeat('OLD', 32));
+
+        Http::fake([
+            $url => Http::response(str_repeat('FORCE', 20), 200, ['Content-Type' => 'image/webp']),
+        ]);
+
+        $result = $this->app->make(ImageDownloader::class)->localize($url, force: true);
+
+        $this->assertSame($path, $result);
+        $this->assertSame(str_repeat('FORCE', 20), Storage::disk('public')->get($path));
+    }
+
+    public function test_download_into_refreshes_existing_public_path_when_stale(): void
+    {
+        Storage::fake('public');
+        $existingPath = 'media/blog/stable-old.webp';
+        Storage::disk('public')->put($existingPath, str_repeat('A', 96));
+
+        $upstream = 'https://cdn.example.test/brand-new-path/hero.webp?v='.(time() + 3600);
+
+        Http::fake([
+            $upstream => Http::response(str_repeat('B', 96), 200, ['Content-Type' => 'image/webp']),
+        ]);
+
+        $ok = $this->app->make(ImageDownloader::class)->downloadInto(
+            $upstream,
+            '/storage/'.$existingPath,
+        );
+
+        $this->assertTrue($ok);
+        $this->assertSame(str_repeat('B', 96), Storage::disk('public')->get($existingPath));
+    }
+
     public function test_local_file_exists_for_relative_public_url(): void
     {
         Storage::fake('public');
