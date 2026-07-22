@@ -110,6 +110,9 @@ class ImageDownloader
      *
      * Accepts absolute http(s) URLs, already-rooted public paths (/storage/...),
      * and disk-relative paths (media/blog/x.webp) produced by localize().
+     *
+     * Local disk paths get a `?v={mtime}` cache-buster so CDN edges (Cloudflare)
+     * pick up replaced bytes after republish/regenerate without renaming files.
      */
     public function toPublicUrl(?string $stored): ?string
     {
@@ -121,11 +124,35 @@ class ImageDownloader
             return $stored;
         }
 
-        if (str_starts_with($stored, '/')) {
-            return $stored;
+        $path = ltrim(explode('?', $stored, 2)[0], '/');
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
         }
 
-        return $this->disk()->url(ltrim($stored, '/'));
+        if (str_starts_with($stored, '/')) {
+            return $this->withCacheBust('/'.ltrim($stored, '/'), $path);
+        }
+
+        return $this->withCacheBust($this->disk()->url($path), $path);
+    }
+
+    private function withCacheBust(string $url, string $diskPath): string
+    {
+        $diskPath = ltrim(explode('?', $diskPath, 2)[0], '/');
+
+        if ($diskPath === '' || ! $this->hasValidFile($this->disk(), $diskPath)) {
+            return $url;
+        }
+
+        try {
+            $version = $this->disk()->lastModified($diskPath);
+        } catch (Throwable) {
+            return $url;
+        }
+
+        $separator = str_contains($url, '?') ? '&' : '?';
+
+        return $url.$separator.'v='.$version;
     }
 
     private function enabled(): bool

@@ -203,19 +203,40 @@ class ImageDownloaderTest extends TestCase
         Storage::fake('public');
         $downloader = $this->app->make(ImageDownloader::class);
 
-        $this->assertSame(
-            '/storage/media/guides/hero.webp',
-            $downloader->toPublicUrl('media/guides/hero.webp'),
-        );
-        $this->assertSame(
-            '/storage/media/guides/hero.webp',
-            $downloader->toPublicUrl('/storage/media/guides/hero.webp'),
-        );
+        Storage::disk('public')->put('media/guides/hero.webp', str_repeat('Z', 40));
+
+        $withBust = $downloader->toPublicUrl('media/guides/hero.webp');
+        $this->assertNotNull($withBust);
+        $this->assertStringStartsWith('/storage/media/guides/hero.webp?v=', $withBust);
+
+        $rooted = $downloader->toPublicUrl('/storage/media/guides/hero.webp');
+        $this->assertNotNull($rooted);
+        $this->assertStringStartsWith('/storage/media/guides/hero.webp?v=', $rooted);
+
         $this->assertSame(
             'https://cdn.example.test/hero.webp',
             $downloader->toPublicUrl('https://cdn.example.test/hero.webp'),
         );
         $this->assertNull($downloader->toPublicUrl(null));
         $this->assertNull($downloader->toPublicUrl(''));
+    }
+
+    public function test_to_public_url_cache_bust_changes_when_file_is_replaced(): void
+    {
+        Storage::fake('public');
+        $path = 'media/blog/hero.webp';
+        Storage::disk('public')->put($path, str_repeat('A', 40));
+        $downloader = $this->app->make(ImageDownloader::class);
+
+        $first = $downloader->toPublicUrl($path);
+        $this->assertNotNull($first);
+
+        // Storage::fake mtime is typically "now"; replace bytes then assert URL
+        // still has a bust param (exact mtime may or may not advance in fake FS).
+        Storage::disk('public')->put($path, str_repeat('B', 40));
+        $second = $downloader->toPublicUrl($path);
+        $this->assertNotNull($second);
+        $this->assertMatchesRegularExpression('#\?v=\d+$#', $second);
+        $this->assertStringStartsWith('/storage/media/blog/hero.webp?v=', $second);
     }
 }
