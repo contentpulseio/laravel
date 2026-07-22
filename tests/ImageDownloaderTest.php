@@ -146,6 +146,24 @@ class ImageDownloaderTest extends TestCase
         $this->assertSame(str_repeat('FORCE', 20), Storage::disk('public')->get($path));
     }
 
+    public function test_localize_replaces_existing_file_via_delete_then_put(): void
+    {
+        Storage::fake('public');
+        $url = 'https://cdn.example.test/replace.webp?v='.(time() + 3600);
+        $baseUrl = explode('?', $url, 2)[0];
+        $path = 'media/blog/'.sha1($baseUrl).'.webp';
+        Storage::disk('public')->put($path, str_repeat('OLD', 32));
+
+        Http::fake([
+            $url => Http::response(str_repeat('REPLACED', 16), 200, ['Content-Type' => 'image/webp']),
+        ]);
+
+        $result = $this->app->make(ImageDownloader::class)->localize($url);
+
+        $this->assertSame($path, $result);
+        $this->assertSame(str_repeat('REPLACED', 16), Storage::disk('public')->get($path));
+    }
+
     public function test_download_into_refreshes_existing_public_path_when_stale(): void
     {
         Storage::fake('public');

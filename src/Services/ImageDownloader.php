@@ -214,6 +214,14 @@ class ImageDownloader
                 return false;
             }
 
+            // Delete first when replacing: PHP-FPM often creates files as
+            // www-data while queue/artisan run as forge. Overwriting a
+            // www-data-owned 0644 file fails; unlinking via a forge-writable
+            // directory then putting a new file succeeds.
+            if ($disk->exists($path)) {
+                $disk->delete($path);
+            }
+
             if (! $disk->put($path, $body)) {
                 $this->logger?->warning('ContentPulse: image download put failed', [
                     'url' => $url,
