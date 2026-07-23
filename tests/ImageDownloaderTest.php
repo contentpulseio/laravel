@@ -42,6 +42,26 @@ class ImageDownloaderTest extends TestCase
         Storage::disk('public')->assertExists($expectedPath);
     }
 
+    public function test_localize_downloads_contentpulse_relative_translation_path(): void
+    {
+        Storage::fake('public');
+        $this->app['config']->set('contentpulse.images.base_url', 'https://contentpulse.test');
+
+        $relativePath = 'tenants/1/images/263/i18n/ar/titles/hero.webp';
+        $upstreamUrl = 'https://contentpulse.test/storage/'.$relativePath;
+        Http::fake([
+            $upstreamUrl => Http::response(str_repeat('T', 64), 200, [
+                'Content-Type' => 'image/webp',
+            ]),
+        ]);
+
+        $result = $this->app->make(ImageDownloader::class)->localize($relativePath);
+        $expectedPath = 'media/blog/'.sha1($upstreamUrl).'.webp';
+
+        $this->assertSame($expectedPath, $result);
+        Storage::disk('public')->assertExists($expectedPath);
+    }
+
     public function test_localize_falls_back_to_upstream_when_download_fails(): void
     {
         Storage::fake('public');

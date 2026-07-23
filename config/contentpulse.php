@@ -152,6 +152,9 @@ return [
         'disk' => env('CONTENTPULSE_IMAGE_DISK', 'public'),
         'path' => env('CONTENTPULSE_IMAGE_PATH', 'media/blog'),
         'relative_url' => (bool) env('CONTENTPULSE_IMAGE_RELATIVE_URL', true),
+        // Public ContentPulse host used to resolve translation image paths
+        // returned as tenants/... or content/... instead of absolute URLs.
+        'base_url' => env('CONTENTPULSE_IMAGE_BASE_URL', 'https://contentpulse.io'),
         // When true (default), sync keeps the existing public image URL if the
         // local file still exists — avoids Google Image SEO churn when the
         // upstream ContentPulse URL path changes on refresh. Local file bytes

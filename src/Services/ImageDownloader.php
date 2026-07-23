@@ -40,6 +40,8 @@ class ImageDownloader
             return $url;
         }
 
+        $url = $this->absoluteContentPulseStorageUrl($url);
+
         if (! $this->isAbsoluteHttpUrl($url)) {
             return $url;
         }
@@ -295,6 +297,31 @@ class ImageDownloader
     private function isAbsoluteHttpUrl(string $url): bool
     {
         return str_starts_with($url, 'http://') || str_starts_with($url, 'https://');
+    }
+
+    /**
+     * ContentPulse may return a storage-relative image path for translations
+     * (for example, tenants/1/images/... or content/123/i18n/...). It is not
+     * a path on the consuming application's disk, so resolve it to the public
+     * ContentPulse storage host before attempting a local download.
+     */
+    private function absoluteContentPulseStorageUrl(string $url): string
+    {
+        if ($this->isAbsoluteHttpUrl($url)) {
+            return $url;
+        }
+
+        $path = ltrim($url, '/');
+        if (! str_starts_with($path, 'tenants/') && ! str_starts_with($path, 'content/')) {
+            return $url;
+        }
+
+        $baseUrl = rtrim((string) $this->config->get(
+            'contentpulse.images.base_url',
+            'https://contentpulse.io',
+        ), '/');
+
+        return $baseUrl.'/storage/'.$path;
     }
 
     private function diskPathFromPublicUrl(string $publicUrl): ?string
