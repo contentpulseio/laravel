@@ -197,4 +197,47 @@ class ContentSyncPreserveImagesTest extends TestCase
         $this->assertSame('media/blog/'.sha1($upstream).'.webp', $content->featured_image);
         Storage::disk('public')->assertExists('media/blog/'.sha1($upstream).'.webp');
     }
+
+    public function test_sync_downloads_chart_images_in_structured_body_and_rendered_html(): void
+    {
+        Storage::fake('public');
+
+        $chartPath = '/storage/content/42/charts/ai-adoption.png';
+        $chartUrl = 'https://contentpulse.io'.$chartPath;
+        $item = ContentItem::fromApiResponse([
+            'id' => '01TESTCHART000000000000001',
+            'slug' => 'chart-images',
+            'title' => 'Chart images',
+            'status' => 'published',
+            'content_type' => 'article',
+            'body' => [[
+                'type' => 'chart',
+                'data' => [
+                    'stat_group_id' => 'ai-adoption',
+                    'image_url' => $chartPath,
+                    'image_variants' => [],
+                ],
+            ]],
+            'rendered_html' => '<figure><img src="'.$chartPath.'" alt="AI adoption"></figure>',
+            'categories' => [],
+            'tags' => [],
+            'faq' => [],
+        ]);
+
+        $client = Mockery::mock(ContentPulseClient::class);
+        $client->shouldReceive('getContentById')->andReturn($item);
+        $this->app->instance(ContentPulseClient::class, $client);
+        Http::fake([
+            $chartUrl => Http::response(str_repeat('P', 64), 200, ['Content-Type' => 'image/png']),
+        ]);
+
+        $this->app->make(ContentSyncService::class)->syncById('01TESTCHART000000000000001');
+
+        $path = 'media/blog/'.sha1($chartUrl).'.png';
+        $content = Content::query()->where('external_id', '01TESTCHART000000000000001')->first();
+        $this->assertNotNull($content);
+        $this->assertSame($path, $content->body[0]['data']['image_url']);
+        $this->assertStringContainsString('src="'.$path.'"', (string) $content->rendered_html);
+        Storage::disk('public')->assertExists($path);
+    }
 }

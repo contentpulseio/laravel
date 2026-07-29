@@ -62,6 +62,26 @@ class ImageDownloaderTest extends TestCase
         Storage::disk('public')->assertExists($expectedPath);
     }
 
+    public function test_localize_downloads_contentpulse_public_chart_path(): void
+    {
+        Storage::fake('public');
+        $this->app['config']->set('contentpulse.images.base_url', 'https://contentpulse.test');
+
+        $relativePath = '/storage/content/263/charts/ai-adoption-full.png';
+        $upstreamUrl = 'https://contentpulse.test'.$relativePath;
+        Http::fake([
+            $upstreamUrl => Http::response(str_repeat('C', 64), 200, [
+                'Content-Type' => 'image/png',
+            ]),
+        ]);
+
+        $result = $this->app->make(ImageDownloader::class)->localize($relativePath);
+        $expectedPath = 'media/blog/'.sha1($upstreamUrl).'.png';
+
+        $this->assertSame($expectedPath, $result);
+        Storage::disk('public')->assertExists($expectedPath);
+    }
+
     public function test_localize_falls_back_to_upstream_when_download_fails(): void
     {
         Storage::fake('public');

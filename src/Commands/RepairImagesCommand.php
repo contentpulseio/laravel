@@ -8,6 +8,7 @@ use ContentPulse\Core\Exceptions\ContentPulseException;
 use ContentPulse\Laravel\Models\Content;
 use ContentPulse\Laravel\Services\ContentSyncService;
 use ContentPulse\Laravel\Services\ImageDownloader;
+use ContentPulse\Media\ImageReferenceRewriter;
 use Illuminate\Console\Command;
 
 class RepairImagesCommand extends Command
@@ -19,7 +20,7 @@ class RepairImagesCommand extends Command
 
     protected $description = 'Re-fetch ContentPulse items and re-download featured images / variants when local files are missing.';
 
-    public function handle(ContentSyncService $sync, ImageDownloader $images): int
+    public function handle(ContentSyncService $sync, ImageDownloader $images, ImageReferenceRewriter $imageReferences): int
     {
         if (! (bool) config('contentpulse.images.download', true)) {
             $this->components->warn('CONTENTPULSE_DOWNLOAD_IMAGES is disabled; nothing to repair.');
@@ -45,7 +46,7 @@ class RepairImagesCommand extends Command
 
         foreach ($query->cursor() as $content) {
             $scanned++;
-            $missing = $this->missingLocalUrls($content, $images);
+            $missing = $this->missingLocalUrls($content, $images, $imageReferences);
             $shouldRepair = $force || $missing !== [];
 
             if (! $shouldRepair) {
@@ -71,7 +72,7 @@ class RepairImagesCommand extends Command
                     $sync->syncById($content->external_id);
                 }
                 $fresh = $content->fresh() ?? $content;
-                $stillMissing = $this->missingLocalUrls($fresh, $images);
+                $stillMissing = $this->missingLocalUrls($fresh, $images, $imageReferences);
 
                 if ($stillMissing !== []) {
                     $failed++;
@@ -105,7 +106,7 @@ class RepairImagesCommand extends Command
     /**
      * @return list<string>
      */
-    private function missingLocalUrls(Content $content, ImageDownloader $images): array
+    private function missingLocalUrls(Content $content, ImageDownloader $images, ImageReferenceRewriter $imageReferences): array
     {
         $missing = [];
         $candidates = [];
@@ -120,6 +121,14 @@ class RepairImagesCommand extends Command
             } elseif (is_array($variant) && isset($variant['url']) && is_string($variant['url']) && $variant['url'] !== '') {
                 $candidates[(string) $key] = $variant['url'];
             }
+        }
+
+        foreach ($imageReferences->chartImageUrls(is_array($content->body) ? $content->body : []) as $index => $url) {
+            $candidates['chart:'.$index] = $url;
+        }
+
+        foreach ($imageReferences->htmlImageUrls((string) ($content->rendered_html ?? '')) as $index => $url) {
+            $candidates['html:'.$index] = $url;
         }
 
         foreach ($candidates as $key => $url) {

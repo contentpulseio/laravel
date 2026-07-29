@@ -8,6 +8,7 @@ use ContentPulse\Core\DTO\ContentFilters;
 use ContentPulse\Core\DTO\ContentItem;
 use ContentPulse\Http\ContentPulseClient;
 use ContentPulse\Laravel\Models\Content;
+use ContentPulse\Media\ImageReferenceRewriter;
 use DateTimeImmutable;
 use Illuminate\Contracts\Config\Repository as Config;
 
@@ -19,6 +20,7 @@ class ContentSyncService
         private readonly ContentPulseClient $client,
         private readonly Config $config,
         private readonly ImageDownloader $images,
+        private readonly ImageReferenceRewriter $imageReferences,
     ) {}
 
     /**
@@ -181,7 +183,10 @@ class ContentSyncService
             $attributes['faq'] = $item->faq;
         }
         if ($item->renderedHtml !== null && $item->renderedHtml !== '') {
-            $attributes['rendered_html'] = $item->renderedHtml;
+            $attributes['rendered_html'] = $this->imageReferences->rewriteHtml(
+                $item->renderedHtml,
+                fn (string $url): ?string => $this->resolveImageUrl($url, null),
+            );
         }
         if ($item->featuredImage !== null && $item->featuredImage !== '') {
             $attributes['featured_image'] = $this->resolveImageUrl(
@@ -206,7 +211,11 @@ class ContentSyncService
 
         $body = $item->raw['body'] ?? $item->raw['current_version']['body'] ?? [];
         if (! empty($body) && is_array($body)) {
-            $attributes['body'] = $body;
+            $attributes['body'] = $this->imageReferences->rewriteChartSections(
+                $body,
+                fn (string $url, ?string $existingUrl): ?string => $this->resolveImageUrl($url, $existingUrl),
+                is_array($existing?->body) ? $existing->body : [],
+            );
         }
 
         $content = Content::query()->updateOrCreate(

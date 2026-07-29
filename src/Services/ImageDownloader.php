@@ -312,6 +312,14 @@ class ImageDownloader
         }
 
         $path = ltrim($url, '/');
+        // Rendered chart HTML uses the public /storage/content/... URL while
+        // structured API bodies may use content/... directly. Neither path
+        // exists on the consuming application's disk; both belong to the
+        // ContentPulse storage host and must be downloaded before rendering.
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
+        }
+
         if (! str_starts_with($path, 'tenants/') && ! str_starts_with($path, 'content/')) {
             return $url;
         }
