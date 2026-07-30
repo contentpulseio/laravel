@@ -364,9 +364,16 @@ class ImageDownloader
             return $url;
         }
 
-        // Store disk-relative paths (e.g. media/blog/x.webp) so host apps can
-        // safely call asset('storage/'.$path) without double-prefixing /storage/.
-        return ltrim($path, '/');
+        // Root-relative public URL (e.g. /storage/media/blog/x.webp). Bare
+        // disk paths like media/blog/x.webp break in nested routes such as
+        // /blog/{slug} because the browser resolves them as /blog/media/...
+        $pathOnly = parse_url($url, PHP_URL_PATH);
+
+        if (is_string($pathOnly) && $pathOnly !== '') {
+            return $pathOnly;
+        }
+
+        return '/storage/'.ltrim($path, '/');
     }
 
     private function disk(): FilesystemAdapter

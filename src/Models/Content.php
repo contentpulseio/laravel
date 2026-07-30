@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ContentPulse\Laravel\Models;
 
+use ContentPulse\Laravel\Services\ImageDownloader;
+use ContentPulse\Media\ImageReferenceRewriter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -125,7 +127,21 @@ class Content extends Model
 
     public function getContentAttribute(): string
     {
-        return (string) ($this->rendered_html ?? '');
+        $html = (string) ($this->rendered_html ?? '');
+
+        if ($html === '' || ! str_contains($html, 'src=')) {
+            return $html;
+        }
+
+        // Localize stores may still hold disk-relative img srcs
+        // (media/blog/...) which break under nested routes. Normalize at
+        // read time so hosts can dump $content->content without rewriting.
+        return app(ImageReferenceRewriter::class)->rewriteHtml(
+            $html,
+            static function (string $url): ?string {
+                return app(ImageDownloader::class)->toPublicUrl($url) ?? $url;
+            },
+        );
     }
 
     public function getReadTimeAttribute(): int

@@ -38,7 +38,7 @@ class ImageDownloaderTest extends TestCase
         $result = $this->app->make(ImageDownloader::class)->localize('https://cdn.example.test/hero.webp');
         $expectedPath = 'media/blog/'.sha1('https://cdn.example.test/hero.webp').'.webp';
 
-        $this->assertSame($expectedPath, $result);
+        $this->assertSame('/storage/'.$expectedPath, $result);
         Storage::disk('public')->assertExists($expectedPath);
     }
 
@@ -58,7 +58,7 @@ class ImageDownloaderTest extends TestCase
         $result = $this->app->make(ImageDownloader::class)->localize($relativePath);
         $expectedPath = 'media/blog/'.sha1($upstreamUrl).'.webp';
 
-        $this->assertSame($expectedPath, $result);
+        $this->assertSame('/storage/'.$expectedPath, $result);
         Storage::disk('public')->assertExists($expectedPath);
     }
 
@@ -78,7 +78,7 @@ class ImageDownloaderTest extends TestCase
         $result = $this->app->make(ImageDownloader::class)->localize($relativePath);
         $expectedPath = 'media/blog/'.sha1($upstreamUrl).'.png';
 
-        $this->assertSame($expectedPath, $result);
+        $this->assertSame('/storage/'.$expectedPath, $result);
         Storage::disk('public')->assertExists($expectedPath);
     }
 
@@ -125,7 +125,7 @@ class ImageDownloaderTest extends TestCase
 
         $result = $this->app->make(ImageDownloader::class)->localize($url);
 
-        $this->assertSame($path, $result);
+        $this->assertSame('/storage/'.$path, $result);
         $this->assertGreaterThanOrEqual(32, Storage::disk('public')->size($path));
     }
 
@@ -145,7 +145,7 @@ class ImageDownloaderTest extends TestCase
 
         $result = $this->app->make(ImageDownloader::class)->localize($freshUrl);
 
-        $this->assertSame($path, $result);
+        $this->assertSame('/storage/'.$path, $result);
         $this->assertSame(str_repeat('NEW', 32), Storage::disk('public')->get($path));
     }
 
@@ -164,7 +164,7 @@ class ImageDownloaderTest extends TestCase
 
         $result = $this->app->make(ImageDownloader::class)->localize($staleBustUrl);
 
-        $this->assertSame($path, $result);
+        $this->assertSame('/storage/'.$path, $result);
         $this->assertSame(str_repeat('KEEP', 32), Storage::disk('public')->get($path));
         Http::assertNothingSent();
     }
@@ -182,7 +182,7 @@ class ImageDownloaderTest extends TestCase
 
         $result = $this->app->make(ImageDownloader::class)->localize($url, force: true);
 
-        $this->assertSame($path, $result);
+        $this->assertSame('/storage/'.$path, $result);
         $this->assertSame(str_repeat('FORCE', 20), Storage::disk('public')->get($path));
     }
 
@@ -200,7 +200,7 @@ class ImageDownloaderTest extends TestCase
 
         $result = $this->app->make(ImageDownloader::class)->localize($url);
 
-        $this->assertSame($path, $result);
+        $this->assertSame('/storage/'.$path, $result);
         $this->assertSame(str_repeat('REPLACED', 16), Storage::disk('public')->get($path));
     }
 

@@ -194,7 +194,7 @@ class ContentSyncPreserveImagesTest extends TestCase
 
         $content = Content::query()->where('external_id', '01TESTPRESERVE0000000000002')->first();
         $this->assertNotNull($content);
-        $this->assertSame('media/blog/'.sha1($upstream).'.webp', $content->featured_image);
+        $this->assertSame('/storage/media/blog/'.sha1($upstream).'.webp', $content->featured_image);
         Storage::disk('public')->assertExists('media/blog/'.sha1($upstream).'.webp');
     }
 
@@ -234,10 +234,31 @@ class ContentSyncPreserveImagesTest extends TestCase
         $this->app->make(ContentSyncService::class)->syncById('01TESTCHART000000000000001');
 
         $path = 'media/blog/'.sha1($chartUrl).'.png';
+        $public = '/storage/'.$path;
         $content = Content::query()->where('external_id', '01TESTCHART000000000000001')->first();
         $this->assertNotNull($content);
-        $this->assertSame($path, $content->body[0]['data']['image_url']);
-        $this->assertStringContainsString('src="'.$path.'"', (string) $content->rendered_html);
+        $this->assertSame($public, $content->body[0]['data']['image_url']);
+        $this->assertStringContainsString('src="'.$public.'"', (string) $content->rendered_html);
+        $this->assertStringContainsString('src="'.$public, $content->content);
         Storage::disk('public')->assertExists($path);
+    }
+
+    public function test_content_accessor_rewrites_legacy_disk_relative_img_srcs(): void
+    {
+        Storage::fake('public');
+        $path = 'media/blog/legacy-chart.png';
+        Storage::disk('public')->put($path, str_repeat('P', 64));
+
+        $content = Content::query()->create([
+            'external_id' => '01TESTLEGACYCHART00000001',
+            'slug' => 'legacy-chart-src',
+            'title' => 'Legacy chart src',
+            'status' => 'published',
+            'rendered_html' => '<figure><img src="'.$path.'" alt="Legacy"></figure>',
+            'published_at' => now(),
+        ]);
+
+        $this->assertStringContainsString('src="/storage/'.$path, $content->content);
+        $this->assertStringNotContainsString('src="media/blog/', $content->content);
     }
 }

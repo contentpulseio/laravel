@@ -126,7 +126,7 @@
         @endif
 
         <div class="cp-article__body">
-            {!! $content->rendered_html !!}
+            {!! $content->content !!}
         </div>
 
         @if ($cpTags->isNotEmpty())
