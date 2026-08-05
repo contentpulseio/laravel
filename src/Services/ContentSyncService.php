@@ -294,7 +294,27 @@ class ContentSyncService
      * when force-refresh is on) so republished/regenerated images replace the
      * stale local copy without changing the public URL.
      */
-    private function resolveImageUrl(string $upstream, ?string $existingPublicUrl): ?string
+    private function resolveImageUrl(string $upstream, ?string $existingPublicUrl, ?string $fallbackUpstream = null): ?string
+    {
+        $resolved = $this->resolveImageUrlOnce($upstream, $existingPublicUrl);
+
+        // ContentPulse keeps the canonical tenant path alongside legacy
+        // media/blog URLs. The latter can be removed during media cleanup,
+        // while the tenant path remains available for a fresh download.
+        if ($fallbackUpstream !== null
+            && $fallbackUpstream !== ''
+            && ! $this->images->localFileExists($resolved)) {
+            $fallback = $this->resolveImageUrlOnce($fallbackUpstream, null);
+
+            if ($this->images->localFileExists($fallback)) {
+                return $fallback;
+            }
+        }
+
+        return $resolved;
+    }
+
+    private function resolveImageUrlOnce(string $upstream, ?string $existingPublicUrl): ?string
     {
         /** @var array<string, string> $rewrites */
         $rewrites = $this->config->get('contentpulse.image_host_rewrites', []);
@@ -347,7 +367,13 @@ class ContentSyncService
             if (is_string($value)) {
                 $images[$key] = $this->resolveImageUrl($value, $existingUrl);
             } elseif (is_array($value) && isset($value['url']) && is_string($value['url'])) {
-                $value['url'] = $this->resolveImageUrl($value['url'], $existingUrl);
+                $fallback = isset($value['path']) && is_string($value['path'])
+                    ? $value['path']
+                    : null;
+                $value['url'] = $this->resolveImageUrl($value['url'], $existingUrl, $fallback);
+                $images[$key] = $value;
+            } elseif (is_array($value) && isset($value['path']) && is_string($value['path'])) {
+                $value['url'] = $this->resolveImageUrl($value['path'], $existingUrl);
                 $images[$key] = $value;
             }
         }

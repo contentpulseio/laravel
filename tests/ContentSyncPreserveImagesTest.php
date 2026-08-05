@@ -198,6 +198,52 @@ class ContentSyncPreserveImagesTest extends TestCase
         Storage::disk('public')->assertExists('media/blog/'.sha1($upstream).'.webp');
     }
 
+    public function test_sync_uses_variant_path_when_legacy_variant_url_is_missing(): void
+    {
+        Storage::fake('public');
+        $this->app['config']->set('contentpulse.images.base_url', 'https://contentpulse.test');
+
+        $legacyUrl = 'https://contentpulse.test/storage/media/blog/removed-thumbnail.webp';
+        $tenantPath = 'tenants/1/images/263/i18n/es/variants/thumbnail/article-RmNjRnMN.webp';
+        $tenantUrl = 'https://contentpulse.test/storage/'.$tenantPath;
+        $item = ContentItem::fromApiResponse([
+            'id' => '01TESTVARIANTFALLBACK000001',
+            'slug' => 'variant-fallback',
+            'title' => 'Variant fallback',
+            'status' => 'published',
+            'content_type' => 'article',
+            'locale' => 'es',
+            'image_variants' => [
+                'thumbnail' => [
+                    'url' => $legacyUrl,
+                    'path' => $tenantPath,
+                    'width' => 320,
+                    'height' => 175,
+                ],
+            ],
+            'categories' => [],
+            'tags' => [],
+            'faq' => [],
+        ]);
+
+        $client = Mockery::mock(ContentPulseClient::class);
+        $client->shouldReceive('getContentById')->andReturn($item);
+        $this->app->instance(ContentPulseClient::class, $client);
+        Http::fake([
+            $legacyUrl => Http::response('missing', 404),
+            $tenantUrl => Http::response(str_repeat('V', 64), 200, ['Content-Type' => 'image/webp']),
+        ]);
+
+        $this->app->make(ContentSyncService::class)->syncById('01TESTVARIANTFALLBACK000001');
+
+        $content = Content::query()->where('external_id', '01TESTVARIANTFALLBACK000001')->first();
+        $this->assertNotNull($content);
+        $expectedPath = 'media/blog/'.sha1($tenantUrl).'.webp';
+        $this->assertSame('/storage/'.$expectedPath, $content->image_variants['thumbnail']['url'] ?? null);
+        $this->assertSame($tenantPath, $content->image_variants['thumbnail']['path'] ?? null);
+        Storage::disk('public')->assertExists($expectedPath);
+    }
+
     public function test_sync_downloads_chart_images_in_structured_body_and_rendered_html(): void
     {
         Storage::fake('public');
