@@ -9,6 +9,8 @@ use ContentPulse\Core\DTO\ContentItem;
 use ContentPulse\Http\ContentPulseClient;
 use ContentPulse\Laravel\Models\Content;
 use ContentPulse\Media\ImageReferenceRewriter;
+use ContentPulse\Rendering\HtmlRenderer;
+use ContentPulse\Rendering\SectionNormalizer;
 use DateTimeImmutable;
 use Illuminate\Contracts\Config\Repository as Config;
 
@@ -216,6 +218,16 @@ class ContentSyncService
                 fn (string $url, ?string $existingUrl): ?string => $this->resolveImageUrl($url, $existingUrl),
                 is_array($existing?->body) ? $existing->body : [],
             );
+
+            // Translation responses intentionally expose structured body data
+            // but do not have a source-language rendered_html column. Build the
+            // display HTML after chart URLs are localized so Laravel consumers
+            // receive the translated chart file, not an empty article or an
+            // upstream ContentPulse URL.
+            if ($item->renderedHtml === null || $item->renderedHtml === '') {
+                $sections = (new SectionNormalizer)->normalize($attributes['body']);
+                $attributes['rendered_html'] = (new HtmlRenderer)->renderAll($sections);
+            }
         }
 
         $content = Content::query()->updateOrCreate(

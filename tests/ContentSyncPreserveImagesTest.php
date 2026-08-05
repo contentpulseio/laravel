@@ -261,4 +261,49 @@ class ContentSyncPreserveImagesTest extends TestCase
         $this->assertStringContainsString('src="/storage/'.$path, $content->content);
         $this->assertStringNotContainsString('src="media/blog/', $content->content);
     }
+
+    public function test_sync_builds_rendered_html_for_structured_translated_chart_body(): void
+    {
+        Storage::fake('public');
+
+        $chartPath = '/storage/content/42/charts/i18n/es/adoption.png';
+        $chartUrl = 'https://contentpulse.io'.$chartPath;
+        $item = ContentItem::fromApiResponse([
+            'id' => '01TESTTRANSLATEDCHART00001',
+            'slug' => 'translated-chart',
+            'title' => 'Adopción por plataforma',
+            'status' => 'published',
+            'content_type' => 'article',
+            'locale' => 'es',
+            'body' => [[
+                'type' => 'chart',
+                'data' => [
+                    'title' => 'Adopción por plataforma',
+                    'image_url' => $chartPath,
+                    'image_alt' => 'Gráfico de adopción',
+                    'data' => [
+                        ['label' => 'Sanidad', 'value' => 42],
+                    ],
+                ],
+            ]],
+            'categories' => [],
+            'tags' => [],
+            'faq' => [],
+        ]);
+
+        $client = Mockery::mock(ContentPulseClient::class);
+        $client->shouldReceive('getContentById')->andReturn($item);
+        $this->app->instance(ContentPulseClient::class, $client);
+        Http::fake([
+            $chartUrl => Http::response(str_repeat('T', 64), 200, ['Content-Type' => 'image/png']),
+        ]);
+
+        $this->app->make(ContentSyncService::class)->syncById('01TESTTRANSLATEDCHART00001');
+
+        $content = Content::query()->where('external_id', '01TESTTRANSLATEDCHART00001')->first();
+        $this->assertNotNull($content);
+        $this->assertStringContainsString('Adopción por plataforma', (string) $content->rendered_html);
+        $this->assertStringContainsString('/storage/media/blog/'.sha1($chartUrl).'.png', (string) $content->rendered_html);
+        Storage::disk('public')->assertExists('media/blog/'.sha1($chartUrl).'.png');
+    }
 }
