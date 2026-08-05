@@ -301,7 +301,8 @@ class ImageDownloader
 
     /**
      * ContentPulse may return a storage-relative image path for translations
-     * (for example, tenants/1/images/... or content/123/i18n/...). It is not
+     * (for example, tenants/1/images/..., content/123/i18n/..., or
+     * media/guides/...). It is not
      * a path on the consuming application's disk, so resolve it to the public
      * ContentPulse storage host before attempting a local download.
      */
@@ -312,15 +313,17 @@ class ImageDownloader
         }
 
         $path = ltrim($url, '/');
-        // Rendered chart HTML uses the public /storage/content/... URL while
-        // structured API bodies may use content/... directly. Neither path
-        // exists on the consuming application's disk; both belong to the
-        // ContentPulse storage host and must be downloaded before rendering.
+        // Rendered chart HTML uses the public /storage/... URL while
+        // structured API bodies may omit the storage prefix. Neither path
+        // exists on the consuming application's disk; these paths belong to
+        // the ContentPulse storage host and must be downloaded before rendering.
         if (str_starts_with($path, 'storage/')) {
             $path = substr($path, strlen('storage/'));
         }
 
-        if (! str_starts_with($path, 'tenants/') && ! str_starts_with($path, 'content/')) {
+        if (! str_starts_with($path, 'tenants/')
+            && ! str_starts_with($path, 'content/')
+            && ! str_starts_with($path, 'media/')) {
             return $url;
         }
 

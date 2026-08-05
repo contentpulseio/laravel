@@ -82,6 +82,26 @@ class ImageDownloaderTest extends TestCase
         Storage::disk('public')->assertExists($expectedPath);
     }
 
+    public function test_localize_downloads_contentpulse_media_path(): void
+    {
+        Storage::fake('public');
+        $this->app['config']->set('contentpulse.images.base_url', 'https://contentpulse.test');
+
+        $relativePath = 'media/guides/salary-threshold.png';
+        $upstreamUrl = 'https://contentpulse.test/storage/'.$relativePath;
+        Http::fake([
+            $upstreamUrl => Http::response(str_repeat('M', 64), 200, [
+                'Content-Type' => 'image/png',
+            ]),
+        ]);
+
+        $result = $this->app->make(ImageDownloader::class)->localize($relativePath);
+        $expectedPath = 'media/blog/'.sha1($upstreamUrl).'.png';
+
+        $this->assertSame('/storage/'.$expectedPath, $result);
+        Storage::disk('public')->assertExists($expectedPath);
+    }
+
     public function test_localize_falls_back_to_upstream_when_download_fails(): void
     {
         Storage::fake('public');
