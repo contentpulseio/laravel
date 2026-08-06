@@ -352,4 +352,65 @@ class ContentSyncPreserveImagesTest extends TestCase
         $this->assertStringContainsString('/storage/media/blog/'.sha1($chartUrl).'.png', (string) $content->rendered_html);
         Storage::disk('public')->assertExists('media/blog/'.sha1($chartUrl).'.png');
     }
+
+    public function test_translation_sync_does_not_reuse_existing_source_chart_url(): void
+    {
+        Storage::fake('public');
+        $this->app['config']->set('contentpulse.images.base_url', 'https://contentpulse.test');
+
+        $sharedPath = 'media/blog/shared-chart.png';
+        Storage::disk('public')->put($sharedPath, str_repeat('english-chart', 4));
+
+        Content::query()->create([
+            'external_id' => '01TESTTRANSLATEDSHARED00001__ar',
+            'slug' => 'shared-chart',
+            'title' => 'العنوان',
+            'status' => 'published',
+            'locale' => 'ar',
+            'body' => [[
+                'type' => 'chart',
+                'data' => [
+                    'stat_group_id' => 'sector-share',
+                    'image_url' => '/storage/'.$sharedPath,
+                ],
+            ]],
+        ]);
+
+        $chartPath = '/storage/content/42/charts/i18n/ar/sector-share.png';
+        $chartUrl = 'https://contentpulse.test'.$chartPath;
+        $item = ContentItem::fromApiResponse([
+            'id' => '01TESTTRANSLATEDSHARED00001__ar',
+            'slug' => 'shared-chart',
+            'title' => 'العنوان',
+            'status' => 'published',
+            'content_type' => 'article',
+            'locale' => 'ar',
+            'body' => [[
+                'type' => 'chart',
+                'data' => [
+                    'stat_group_id' => 'sector-share',
+                    'image_url' => $chartPath,
+                ],
+            ]],
+            'parent_external_id' => '01TESTTRANSLATEDSHARED00001',
+            'categories' => [],
+            'tags' => [],
+        ]);
+
+        $client = Mockery::mock(ContentPulseClient::class);
+        $client->shouldReceive('getContentById')->andReturn($item);
+        $this->app->instance(ContentPulseClient::class, $client);
+        Http::fake([
+            $chartUrl => Http::response(str_repeat('arabic-chart', 4), 200, ['Content-Type' => 'image/png']),
+        ]);
+
+        $this->app->make(ContentSyncService::class)->syncById($item->id);
+
+        $content = Content::query()->where('external_id', $item->id)->first();
+        $this->assertNotNull($content);
+        $expectedPath = 'media/blog/'.sha1($chartUrl).'.png';
+        $this->assertSame('/storage/'.$expectedPath, $content->body[0]['data']['image_url']);
+        $this->assertSame(str_repeat('english-chart', 4), Storage::disk('public')->get($sharedPath));
+        $this->assertSame(str_repeat('arabic-chart', 4), Storage::disk('public')->get($expectedPath));
+    }
 }

@@ -157,6 +157,7 @@ class ContentSyncService
     public function upsert(ContentItem $item): Content
     {
         $existing = Content::query()->where('external_id', $item->id)->first();
+        $existingImageUrls = $this->isTranslationItem($item) ? null : $existing;
 
         $attributes = [
             'slug' => $item->slug,
@@ -193,11 +194,11 @@ class ContentSyncService
         if ($item->featuredImage !== null && $item->featuredImage !== '') {
             $attributes['featured_image'] = $this->resolveImageUrl(
                 $item->featuredImage,
-                $existing?->featured_image,
+                $existingImageUrls?->featured_image,
             );
         }
         if ($item->images !== []) {
-            $existingVariants = is_array($existing?->image_variants) ? $existing->image_variants : [];
+            $existingVariants = is_array($existingImageUrls?->image_variants) ? $existingImageUrls->image_variants : [];
             $attributes['image_variants'] = $this->rewriteImageMap($item->images, $existingVariants);
         }
 
@@ -216,7 +217,7 @@ class ContentSyncService
             $attributes['body'] = $this->imageReferences->rewriteChartSections(
                 $body,
                 fn (string $url, ?string $existingUrl): ?string => $this->resolveImageUrl($url, $existingUrl),
-                is_array($existing?->body) ? $existing->body : [],
+                is_array($existingImageUrls?->body) ? $existingImageUrls->body : [],
             );
 
             // Translation responses intentionally expose structured body data
@@ -236,6 +237,18 @@ class ContentSyncService
         );
 
         return $content;
+    }
+
+    /**
+     * Translations have locale-specific assets. Reusing a local URL from an
+     * older translation can point the source article at the same file, then
+     * overwrite that file with translated bytes during the download.
+     */
+    private function isTranslationItem(ContentItem $item): bool
+    {
+        return isset($item->raw['parent_external_id'])
+            && is_string($item->raw['parent_external_id'])
+            && trim($item->raw['parent_external_id']) !== '';
     }
 
     private function date(?DateTimeImmutable $value): ?string
