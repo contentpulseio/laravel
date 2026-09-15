@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ContentPulse\Laravel\Models;
 
 use ContentPulse\Laravel\Services\ImageDownloader;
+use ContentPulse\Laravel\Support\Locale;
 use ContentPulse\Media\ImageReferenceRewriter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -25,6 +26,7 @@ use Illuminate\Support\Str;
  * @property string|null $status
  * @property string|null $content_type
  * @property string|null $locale
+ * @property string|null $region
  * @property int|null $word_count
  * @property array<string, mixed>|null $categories
  * @property array<string, mixed>|null $tags
@@ -50,6 +52,7 @@ class Content extends Model
         'status',
         'content_type',
         'locale',
+        'region',
         'word_count',
         'categories',
         'tags',
@@ -89,6 +92,36 @@ class Content extends Model
     public function scopePublished($query)
     {
         return $query->where('status', 'published')->orderByDesc('published_at');
+    }
+
+    public function scopeForLocale($query, ?string $routeLocale)
+    {
+        if ($routeLocale === null || Locale::parts($routeLocale) === null) {
+            return $query;
+        }
+
+        $language = Locale::language($routeLocale);
+        $region = Locale::region($routeLocale) ?? Locale::configuredRegion($routeLocale);
+
+        return $query->where(function ($localeQuery) use ($language, $region, $routeLocale): void {
+            $localeQuery->where(function ($match) use ($language, $region): void {
+                $match->where('locale', $language);
+                if ($region !== null) {
+                    $match->where(function ($regionQuery) use ($region): void {
+                        $regionQuery->where('region', $region)->orWhereNull('region');
+                    });
+                }
+            });
+
+            if (Locale::isDefault($routeLocale)) {
+                $localeQuery->orWhereNull('locale');
+            }
+        });
+    }
+
+    public function localeTag(): string
+    {
+        return Locale::forContent($this->locale, $this->region);
     }
 
     public function scopeWhereCategory($query, string $slug)

@@ -21,6 +21,7 @@ class ResourceController
 
         $contents = Content::query()
             ->published()
+            ->forLocale($request->route('locale'))
             ->when($category !== null, fn ($query) => $query->whereCategory($category))
             ->when($tag !== null, fn ($query) => $query->whereTag($tag))
             ->paginate($perPage)
@@ -42,11 +43,13 @@ class ResourceController
         return Str::slug($value);
     }
 
-    public function show(string $slug, SeoBuilder $seo): View
+    public function show(Request $request, SeoBuilder $seo): View
     {
+        $slug = (string) $request->route('slug');
         $content = Content::query()
             ->where('slug', $slug)
             ->where('status', 'published')
+            ->forLocale($request->route('locale'))
             ->firstOrFail();
 
         return view('contentpulse::show', [

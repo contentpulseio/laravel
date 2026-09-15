@@ -79,6 +79,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Locale and region routes
+    |--------------------------------------------------------------------------
+    |
+    | Use `language` for /en/resources or `bcp47` for /en-gb/resources.
+    | `regions` maps ContentPulse language rows to a regional route when the
+    | upstream payload does not yet expose a region field.
+    |
+    */
+    'localization' => [
+        'route_mode' => env('CONTENTPULSE_LOCALE_ROUTE_MODE', 'language'),
+        'default' => env('CONTENTPULSE_DEFAULT_LOCALE', 'en'),
+        'regions' => [],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Host Layout
     |--------------------------------------------------------------------------
     |

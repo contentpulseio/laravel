@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        $table = (string) config('contentpulse.table', 'contentpulse_contents');
+
+        if (! Schema::hasColumn($table, 'region')) {
+            Schema::table($table, function (Blueprint $table): void {
+                $table->string('region', 10)->nullable()->after('locale')->index();
+            });
+        }
+
+        $indexes = collect(Schema::getIndexes($table));
+        $legacy = $indexes->first(fn (array $index): bool => $index['columns'] === ['slug', 'locale']);
+        if ($legacy !== null) {
+            Schema::table($table, function (Blueprint $table): void {
+                $table->dropUnique(['slug', 'locale']);
+            });
+        }
+
+        $indexes = collect(Schema::getIndexes($table));
+        $current = $indexes->first(fn (array $index): bool => $index['columns'] === ['slug', 'locale', 'region']);
+        if ($current === null) {
+            Schema::table($table, function (Blueprint $table): void {
+                $table->unique(['slug', 'locale', 'region']);
+            });
+        }
+    }
+
+    public function down(): void
+    {
+        $table = (string) config('contentpulse.table', 'contentpulse_contents');
+
+        if (Schema::hasColumn($table, 'region')) {
+            Schema::table($table, function (Blueprint $table): void {
+                $table->dropUnique(['slug', 'locale', 'region']);
+                $table->dropColumn('region');
+                $table->unique(['slug', 'locale']);
+            });
+        }
+    }
+};

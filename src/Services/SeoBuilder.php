@@ -54,7 +54,7 @@ class SeoBuilder
             'headline' => $content->title,
             'description' => $seo['meta_description'] ?? $content->excerpt,
             'image' => $image,
-            'inLanguage' => $content->locale,
+            'inLanguage' => $content->localeTag(),
             'datePublished' => $content->published_at?->toIso8601String(),
             'dateModified' => $content->content_updated_at?->toIso8601String(),
             'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $url],

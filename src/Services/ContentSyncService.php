@@ -8,6 +8,7 @@ use ContentPulse\Core\DTO\ContentFilters;
 use ContentPulse\Core\DTO\ContentItem;
 use ContentPulse\Http\ContentPulseClient;
 use ContentPulse\Laravel\Models\Content;
+use ContentPulse\Laravel\Support\Locale;
 use ContentPulse\Media\ImageReferenceRewriter;
 use ContentPulse\Rendering\HtmlRenderer;
 use ContentPulse\Rendering\SectionNormalizer;
@@ -131,7 +132,7 @@ class ContentSyncService
 
             try {
                 $translation = $this->client->getContentTranslation($parent->id, $summary->locale);
-                $this->upsert($translation->toContentItem($parent));
+                $this->upsert($this->withStableTranslationId($translation->toContentItem($parent)));
                 $synced++;
             } catch (\Throwable $e) {
                 logger()->warning('ContentPulse: sync translation failed', [
@@ -167,6 +168,7 @@ class ContentSyncService
             'status' => $item->status,
             'content_type' => $item->contentType,
             'locale' => $item->locale,
+            'region' => $this->region($item),
             'word_count' => $item->wordCount,
             'categories' => $item->categories,
             'tags' => $item->tags,
@@ -237,6 +239,59 @@ class ContentSyncService
         );
 
         return $content;
+    }
+
+    private function region(ContentItem $item): ?string
+    {
+        $translation = is_array($item->raw['translation'] ?? null) ? $item->raw['translation'] : [];
+        $candidate = $item->raw['region']
+            ?? $item->raw['locale_region']
+            ?? $item->raw['locale_tag']
+            ?? $translation['region']
+            ?? $translation['locale_region']
+            ?? $translation['locale_tag']
+            ?? null;
+
+        return Locale::normalizeRegion(is_string($candidate) ? $candidate : null)
+            ?? Locale::configuredRegion($item->locale)
+            ?? (Locale::language($item->locale) === null ? Locale::configuredRegion((string) config('contentpulse.localization.default', 'en')) : null);
+    }
+
+    private function withStableTranslationId(ContentItem $item): ContentItem
+    {
+        $parentId = $item->raw['parent_external_id'] ?? null;
+        if (! is_string($parentId) || $parentId === '') {
+            return $item;
+        }
+
+        $tag = Locale::tag($item->locale, $this->region($item));
+        if ($tag === null || $item->id === $parentId.'__'.$tag) {
+            return $item;
+        }
+
+        return new ContentItem(
+            id: $parentId.'__'.$tag,
+            slug: $item->slug,
+            title: $item->title,
+            sections: $item->sections,
+            renderedHtml: $item->renderedHtml,
+            faq: $item->faq,
+            excerpt: $item->excerpt,
+            featuredImage: $item->featuredImage,
+            images: $item->images,
+            seo: $item->seo,
+            status: $item->status,
+            contentType: $item->contentType,
+            locale: $item->locale,
+            wordCount: $item->wordCount,
+            categories: $item->categories,
+            tags: $item->tags,
+            publishedAt: $item->publishedAt,
+            scheduledAt: $item->scheduledAt,
+            createdAt: $item->createdAt,
+            updatedAt: $item->updatedAt,
+            raw: $item->raw,
+        );
     }
 
     /**
