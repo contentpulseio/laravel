@@ -127,6 +127,8 @@ class ContentSyncService
 
         foreach ($summaries as $summary) {
             if (! $summary->isLive || $summary->locale === '') {
+                $this->deleteTranslation($parent->id, $summary->locale, $summary->raw);
+
                 continue;
             }
 
@@ -146,6 +148,30 @@ class ContentSyncService
         }
 
         return $synced;
+    }
+
+    /**
+     * Remove a local translation when ContentPulse stops serving it. Without
+     * this, an unpublish event leaves the previous translated article live.
+     *
+     * @param array<string, mixed> $raw
+     */
+    private function deleteTranslation(string $parentId, string $locale, array $raw = []): void
+    {
+        if ($locale === '') {
+            return;
+        }
+
+        $region = $raw['region'] ?? $raw['locale_region'] ?? $raw['locale_tag'] ?? null;
+        $ids = [$parentId.'__'.$locale];
+        $tag = Locale::tag($locale, is_string($region) ? $region : null);
+        if ($tag !== null) {
+            $ids[] = $parentId.'__'.$tag;
+        }
+
+        Content::query()
+            ->whereIn('external_id', array_unique($ids))
+            ->delete();
     }
 
     public function deleteByExternalId(string $ulid): void
