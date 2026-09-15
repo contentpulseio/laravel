@@ -252,9 +252,7 @@ class ContentSyncService
             ?? $translation['locale_tag']
             ?? null;
 
-        return Locale::normalizeRegion(is_string($candidate) ? $candidate : null)
-            ?? Locale::configuredRegion($item->locale)
-            ?? (Locale::language($item->locale) === null ? Locale::configuredRegion((string) config('contentpulse.localization.default', 'en')) : null);
+        return Locale::normalizeRegion(is_string($candidate) ? $candidate : null);
     }
 
     private function withStableTranslationId(ContentItem $item): ContentItem

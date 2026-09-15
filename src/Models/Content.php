@@ -101,7 +101,7 @@ class Content extends Model
         }
 
         $language = Locale::language($routeLocale);
-        $region = Locale::region($routeLocale) ?? Locale::configuredRegion($routeLocale);
+        $region = Locale::region($routeLocale);
 
         return $query->where(function ($localeQuery) use ($language, $region, $routeLocale): void {
             $localeQuery->where(function ($match) use ($language, $region): void {

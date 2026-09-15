@@ -17,13 +17,11 @@ class LocaleTest extends TestCase
         $this->assertSame('zh-hant-tw', Locale::routeSegment('zh-Hant-TW'));
     }
 
-    public function test_language_routes_can_resolve_a_configured_region(): void
+    public function test_language_routes_remain_language_only_without_region_data(): void
     {
         config()->set('contentpulse.localization.route_mode', 'language');
-        config()->set('contentpulse.localization.regions', ['en' => 'GB']);
 
-        $this->assertSame('en-GB', Locale::forContent('en'));
+        $this->assertSame('en', Locale::forContent('en'));
         $this->assertSame('en', Locale::routeSegment('en'));
-        $this->assertSame('GB', Locale::configuredRegion('en'));
     }
 }

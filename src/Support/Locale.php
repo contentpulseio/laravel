@@ -25,8 +25,7 @@ final class Locale
         }
 
         $resolvedRegion = self::normalizeRegion($region)
-            ?? $parts['region']
-            ?? self::configuredRegion($parts['language']);
+            ?? $parts['region'];
 
         $tag = $parts['language'];
         if ($parts['script'] !== null) {
