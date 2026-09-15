@@ -244,12 +244,12 @@ class ContentSyncService
     private function region(ContentItem $item): ?string
     {
         $translation = is_array($item->raw['translation'] ?? null) ? $item->raw['translation'] : [];
-        $candidate = $item->raw['region']
-            ?? $item->raw['locale_region']
-            ?? $item->raw['locale_tag']
-            ?? $translation['region']
+        $candidate = $translation['region']
             ?? $translation['locale_region']
             ?? $translation['locale_tag']
+            ?? $item->raw['region']
+            ?? $item->raw['locale_region']
+            ?? $item->raw['locale_tag']
             ?? null;
 
         return Locale::normalizeRegion(is_string($candidate) ? $candidate : null);
