@@ -12,9 +12,21 @@ final class Locale
      */
     public static function forContent(?string $locale, ?string $region = null): string
     {
-        return self::tag($locale, $region)
-            ?? self::tag((string) config('contentpulse.localization.default', 'en'))
-            ?? 'en';
+        $tag = self::tag($locale, $region);
+        $default = self::tag((string) config('contentpulse.localization.default', 'en'));
+
+        // A source item may expose only `en` while the host's configured
+        // default is `en-GB`. Preserve that host default for canonical URLs;
+        // explicit regional variants such as `en-CA` remain untouched.
+        if ($tag !== null
+            && self::region($tag) === null
+            && self::language($tag) !== null
+            && self::language($tag) === self::language($default)
+            && self::region($default) !== null) {
+            return $default;
+        }
+
+        return $tag ?? $default ?? 'en';
     }
 
     public static function tag(?string $locale, ?string $region = null): ?string
@@ -83,6 +95,35 @@ final class Locale
     public static function region(?string $value): ?string
     {
         return self::parts($value)['region'] ?? null;
+    }
+
+    /**
+     * Return a readable label for a language tag without maintaining an app
+     * locale catalogue. The intl extension supplies native language names and
+     * English region names; the fallback keeps the package usable without it.
+     */
+    public static function readableName(?string $value): string
+    {
+        $tag = self::forContent($value);
+        $language = self::language($tag) ?? 'en';
+        $languageName = ucfirst($language);
+
+        if (class_exists('Locale')) {
+            try {
+                $languageName = \Locale::getDisplayLanguage($tag, $tag) ?: $languageName;
+                $region = self::region($tag);
+                if ($region !== null) {
+                    $regionName = \Locale::getDisplayRegion($tag, 'en');
+                    if ($regionName !== '') {
+                        return $languageName.' ('.$regionName.')';
+                    }
+                }
+            } catch (\Throwable) {
+                // Fall back to the language code when intl rejects a tag.
+            }
+        }
+
+        return $languageName;
     }
 
     public static function configuredRegion(?string $locale): ?string

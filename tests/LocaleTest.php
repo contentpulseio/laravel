@@ -24,4 +24,21 @@ class LocaleTest extends TestCase
         $this->assertSame('en', Locale::forContent('en'));
         $this->assertSame('en', Locale::routeSegment('en'));
     }
+
+    public function test_source_language_uses_the_configured_regional_default(): void
+    {
+        config()->set('contentpulse.localization.default', 'en-GB');
+        config()->set('contentpulse.localization.route_mode', 'bcp47');
+
+        $this->assertSame('en-GB', Locale::forContent('en'));
+        $this->assertSame('en-gb', Locale::routeSegment('en'));
+        $this->assertSame('en-CA', Locale::forContent('en', 'CA'));
+    }
+
+    public function test_readable_names_include_regions_without_an_app_catalogue(): void
+    {
+        $this->assertStringContainsString('English', Locale::readableName('en-GB'));
+        $this->assertStringContainsString('United Kingdom', Locale::readableName('en-GB'));
+        $this->assertStringContainsString('العربية', Locale::readableName('ar-AE'));
+    }
 }

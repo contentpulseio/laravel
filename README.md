@@ -188,6 +188,21 @@ Laravel automatically loads the published copies instead of the package
 defaults, so edit them freely. Delete a file to fall back to the package
 version. Package updates never overwrite your published views.
 
+### Language switcher
+
+The package includes a locale-aware dropdown for hosts that expose translated
+content. Pass a tag-to-URL map so only published variants are offered:
+
+```blade
+@include('contentpulse::components.language-switcher', [
+    'links' => ['en-GB' => $englishUrl, 'ar-AE' => $arabicUrl],
+    'current' => 'en-GB',
+])
+```
+
+Labels are generated from BCP-47 tags, including regional variants, so adding a
+new ContentPulse language requires no application locale mapping.
+
 ## Artisan
 
 ```bash
