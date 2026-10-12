@@ -150,11 +150,11 @@ class Content extends Model
             });
         }
 
+        // Portable JSON containment: JSON_CONTAINS on MySQL/MariaDB, @> on PostgreSQL.
+        // Matches taxonomy objects ({"slug": ...}) and legacy plain-string lists.
         return $query->where(function ($inner) use ($column, $slug) {
-            $inner->whereRaw(
-                'JSON_SEARCH(`'.$column.'`, "one", ?, NULL, \'$[*].slug\') IS NOT NULL',
-                [$slug]
-            )->orWhereJsonContains($column, $slug);
+            $inner->whereJsonContains($column, [['slug' => $slug]])
+                ->orWhereJsonContains($column, $slug);
         });
     }
 
