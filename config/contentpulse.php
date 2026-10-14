@@ -232,6 +232,10 @@ return [
     | light-mode default.
     |
     */
+    'light' => [
+        'accent' => env('CONTENTPULSE_LIGHT_ACCENT', '#2563eb'),
+    ],
+
     'dark' => [
         'strategy' => env('CONTENTPULSE_DARK_STRATEGY', 'media'),
         'fg' => env('CONTENTPULSE_DARK_FG', '#e4e4e7'),

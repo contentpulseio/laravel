@@ -2,6 +2,7 @@
     @php
         $cpTopOffset = config('contentpulse.view.top_offset', '2rem');
         $cpMaxWidth = config('contentpulse.view.max_width', '760px');
+        $cpAccent = config('contentpulse.light.accent', '#2563eb');
         $cpCtaBg = config('contentpulse.cta.background', '#7c3aed');
         $cpCtaText = config('contentpulse.cta.text_color', '#ffffff');
         $cpCtaRadius = config('contentpulse.cta.radius', '6px');
@@ -19,7 +20,7 @@
             --cp-muted: #5b6470;
             --cp-border: #e5e7eb;
             --cp-bg-soft: #f7f8fa;
-            --cp-accent: #2563eb;
+            --cp-accent: {{ $cpAccent }};
             --cp-radius: 12px;
             --cp-top-offset: {{ $cpTopOffset }};
             --cp-max-width: {{ $cpMaxWidth }};
@@ -52,6 +53,8 @@
         .cp-article h3 { font-size: 1.25rem; margin: 2rem 0 .75rem; }
         .cp-article p { margin: 0 0 1.1rem; text-wrap: pretty; }
         .cp-article a { color: var(--cp-accent); }
+        /* Older ContentPulse payloads store the former purple tip color inline. */
+        .cp-article aside[style*="#8b5cf6"] { border-left-color: var(--cp-accent) !important; }
 
         .cp-article ul,
         .cp-article ol { margin: 0 0 1.1rem; padding-left: 1.5rem; }

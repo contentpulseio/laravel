@@ -51,6 +51,21 @@ class RenderingTest extends TestCase
         $response->assertSee('Yes, totally free.', false);
     }
 
+    public function test_tip_callout_border_uses_configured_site_accent(): void
+    {
+        config()->set('contentpulse.light.accent', '#18594a');
+        $this->makeContent([
+            'rendered_html' => '<aside style="border-left:4px solid #8b5cf6">Tip content</aside>',
+        ]);
+
+        $response = $this->get(route('contentpulse.show', 'getting-started'));
+
+        $response->assertOk();
+        $response->assertSee('--cp-accent: #18594a;', false);
+        $response->assertSee('.cp-article aside[style*="#8b5cf6"] { border-left-color: var(--cp-accent) !important; }', false);
+        $response->assertSee('border-left:4px solid #8b5cf6', false);
+    }
+
     public function test_show_route_emits_seo_meta_and_json_ld(): void
     {
         $this->makeContent();

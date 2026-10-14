@@ -170,6 +170,10 @@ echo $content->rendered_html;
 
 ## Customizing the design
 
+Set `CONTENTPULSE_LIGHT_ACCENT` to your site's brand color. The bundled views
+use it for accent styling and for older tip callouts that still contain the
+legacy purple inline border.
+
 The bundled Blade views are fully overridable. Publish them into your app to
 own the markup and styling:
 
