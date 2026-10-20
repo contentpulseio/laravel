@@ -96,6 +96,9 @@
             border-radius: var(--cp-radius);
         }
         .cp-article__hero-image { margin: 0 0 2rem; }
+        .cp-article__body figure { max-width: 100%; margin: 1.5rem 0; }
+        .cp-article__body img { display: block; max-width: 100%; height: auto; margin-inline: auto; }
+        .cp-article__body figcaption { margin-top: .5rem; color: var(--cp-muted); font-size: .875rem; line-height: 1.5; }
 
         .cp-index__title { font-size: 2rem; margin: 0 0 2rem; }
         .cp-index__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
