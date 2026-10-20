@@ -40,7 +40,20 @@
         .cp-index { --cp-max-width: 1080px; }
 
         .cp-article :where(h1, h2, h3) { line-height: 1.25; color: var(--cp-fg); }
-        .cp-article__title { font-size: 2.25rem; font-weight: 800; line-height: 1.2; margin: 0 0 1.5rem; }
+        .cp-article__breadcrumbs { margin: 0 0 1.25rem; color: var(--cp-muted); font-size: .875rem; line-height: 1.5; }
+        .cp-article__breadcrumbs ol { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+        .cp-article__breadcrumbs li { min-width: 0; overflow-wrap: anywhere; }
+        .cp-article__breadcrumbs li + li::before { content: "/"; margin-right: .35rem; color: var(--cp-muted); }
+        .cp-article__breadcrumbs a { color: var(--cp-accent); text-decoration: none; }
+        .cp-article__breadcrumbs a:hover { text-decoration: underline; }
+        .cp-article__breadcrumbs [aria-current="page"] { color: var(--cp-fg); }
+        .cp-article__title { font-size: 2.25rem; font-weight: 800; line-height: 1.2; margin: 0 0 1rem; }
+        .cp-article__byline { display: flex; align-items: center; gap: .7rem; margin: 0 0 1.5rem; }
+        .cp-article__byline-avatar { display: grid; width: 2.5rem; height: 2.5rem; flex: 0 0 2.5rem; place-items: center; overflow: hidden; border-radius: 50%; background: var(--cp-bg-soft); color: var(--cp-accent); font-size: .8rem; font-weight: 700; }
+        .cp-article__byline-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .cp-article__byline-copy { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .45rem; }
+        .cp-article__byline-name { color: var(--cp-fg); font-weight: 700; }
+        .cp-article__byline-role { color: var(--cp-muted); font-size: .9rem; }
         .cp-article__meta { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin: 0 0 1rem; font-size: .85rem; color: var(--cp-muted); }
         .cp-article__meta .cp-cat { background: var(--cp-bg-soft); color: var(--cp-accent); border: 1px solid var(--cp-border); padding: .15rem .6rem; border-radius: 9999px; font-weight: 600; text-decoration: none; transition: background .15s ease; }
         a.cp-cat:hover { background: #eef2ff; }

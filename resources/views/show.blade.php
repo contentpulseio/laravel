@@ -59,6 +59,16 @@
     $cpTags = collect($content->tags ?? [])->map($cpTaxonomy)
         ->filter(fn ($item) => $item['name'] !== '')->values();
     $cpIndexRoute = \Illuminate\Support\Facades\Route::has('contentpulse.index');
+    $cpPrimaryCategory = $cpCategories->first();
+    $cpAuthor = is_array($content->author) ? $content->author : [];
+    $cpAuthorName = trim((string) ($cpAuthor['name'] ?? ''));
+    $cpAuthorRole = trim((string) ($cpAuthor['expertise_title'] ?? ''));
+    $cpAuthorAvatar = $cpImageUrl(isset($cpAuthor['avatar_url']) && is_string($cpAuthor['avatar_url']) ? $cpAuthor['avatar_url'] : null);
+    $cpAuthorInitials = collect(explode(' ', $cpAuthorName))
+        ->filter()
+        ->take(2)
+        ->map(fn ($part) => \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($part, 0, 1)))
+        ->implode('');
 @endphp
 
 @if (config('contentpulse.view.head_directive', 'sections') === 'push_raw')
@@ -97,22 +107,54 @@
     @include('contentpulse::partials.styles')
 
     <article class="cp-article">
-        @if ($cpCategories->isNotEmpty() || $content->published_at)
-            <div class="cp-article__meta">
-                @foreach ($cpCategories as $category)
+        <nav class="cp-article__breadcrumbs" aria-label="Breadcrumb">
+            <ol>
+                <li><a href="{{ url('/') }}">Home</a></li>
+                <li>
                     @if ($cpIndexRoute)
-                        <a href="{{ route('contentpulse.index', ['category' => $category['slug']]) }}" class="cp-cat">{{ $category['name'] }}</a>
+                        <a href="{{ route('contentpulse.index') }}">Resources</a>
                     @else
-                        <span class="cp-cat">{{ $category['name'] }}</span>
+                        <span>Resources</span>
                     @endif
-                @endforeach
-                @if ($content->published_at)
-                    <time datetime="{{ $content->published_at->toIso8601String() }}">{{ $content->published_at->format('M j, Y') }}</time>
+                </li>
+                @if ($cpPrimaryCategory)
+                    <li>
+                        @if ($cpIndexRoute)
+                            <a href="{{ route('contentpulse.index', ['category' => $cpPrimaryCategory['slug']]) }}">{{ $cpPrimaryCategory['name'] }}</a>
+                        @else
+                            <span>{{ $cpPrimaryCategory['name'] }}</span>
+                        @endif
+                    </li>
                 @endif
+                <li aria-current="page"><span>{{ $content->title }}</span></li>
+            </ol>
+        </nav>
+
+        @if ($content->published_at)
+            <div class="cp-article__meta">
+                <time datetime="{{ $content->published_at->toIso8601String() }}">{{ $content->published_at->format('M j, Y') }}</time>
             </div>
         @endif
 
         <h1 class="cp-article__title">{{ $content->title }}</h1>
+
+        @if ($cpAuthorName !== '')
+            <div class="cp-article__byline" aria-label="Article author">
+                <span class="cp-article__byline-avatar" aria-hidden="true">
+                    @if ($cpAuthorAvatar)
+                        <img src="{{ $cpAuthorAvatar }}" alt="" loading="lazy" decoding="async">
+                    @else
+                        {{ $cpAuthorInitials }}
+                    @endif
+                </span>
+                <span class="cp-article__byline-copy">
+                    <span class="cp-article__byline-name">{{ $cpAuthorName }}</span>
+                    @if ($cpAuthorRole !== '')
+                        <span class="cp-article__byline-role">{{ $cpAuthorRole }}</span>
+                    @endif
+                </span>
+            </div>
+        @endif
 
         @if (! empty($cpFeaturedImage))
             <figure class="cp-article__hero-image">
